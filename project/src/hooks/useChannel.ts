@@ -41,8 +41,17 @@ export function useChannel(channelId: string): UseChannelResult {
     let cancelled = false;
 
     (async () => {
+      if (!channelId) {
+        setChannel(null);
+        setIsLoading(false);
+        setLoadError(null);
+        return;
+      }
+
       setIsLoading(true);
+      setChannel(null);
       setLoadError(null);
+      setSubscriptionError(null);
       try {
         const [profile, subscriberCount, isSubscribed] = await Promise.all([
           fetchProfile(channelId),

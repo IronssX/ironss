@@ -34,6 +34,29 @@ export function validateVideoFile(file: File, language: Language = 'tr'): string
   return null;
 }
 
+export function validateShortVideoOrientation(file: File, language: Language = 'tr'): Promise<string | null> {
+  return new Promise((resolve) => {
+    const video = document.createElement('video');
+    const url = URL.createObjectURL(file);
+    const finish = (error: string | null) => {
+      video.removeAttribute('src');
+      video.load();
+      URL.revokeObjectURL(url);
+      resolve(error);
+    };
+
+    video.preload = 'metadata';
+    video.onloadedmetadata = () => {
+      const { videoWidth, videoHeight } = video;
+      finish(videoWidth > 0 && videoHeight > videoWidth
+        ? null
+        : translate(language, 'validation.shortOrientation'));
+    };
+    video.onerror = () => finish(translate(language, 'validation.shortMetadata'));
+    video.src = url;
+  });
+}
+
 export function validateThumbnailFile(file: File, language: Language = 'tr'): string | null {
   if (!(VIDEO_UPLOAD_LIMITS.thumbnailTypes as readonly string[]).includes(file.type)) {
     return translate(language, 'validation.thumbnailType');

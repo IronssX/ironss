@@ -1,6 +1,6 @@
 import { VIDEO_TYPE_EXTENSIONS } from '@/config/videoUploads';
 import { requireSupabase, SUPABASE_PUBLISHABLE_KEY, SUPABASE_URL } from '@/lib/supabase';
-import type { Video } from '@/types/video';
+import type { Video, VideoType } from '@/types/video';
 
 const VIDEO_BUCKET = 'videos';
 
@@ -19,6 +19,24 @@ interface VideoRow {
   thumbnail_path: string | null;
   created_at: string;
   view_count: number;
+  video_type?: VideoType;
+}
+
+const VIDEO_FIELDS = 'id, owner_id, uploader_name, title, description, video_path, thumbnail_path, created_at, view_count';
+
+export class VideoTypeSchemaMissingError extends Error {
+  constructor() {
+    super('The videos.video_type column is missing. Apply the video type migration to enable Shorts.');
+    this.name = 'VideoTypeSchemaMissingError';
+  }
+}
+
+function isVideoTypeColumnMissing(error: unknown): boolean {
+  if (!error || typeof error !== 'object') return false;
+  const candidate = error as { code?: unknown; message?: unknown };
+  return candidate.code === '42703' &&
+    typeof candidate.message === 'string' &&
+    candidate.message.includes('video_type');
 }
 
 function isVideoRow(value: unknown): value is VideoRow {
@@ -33,7 +51,8 @@ function isVideoRow(value: unknown): value is VideoRow {
     typeof row.video_path === 'string' &&
     (row.thumbnail_path === null || typeof row.thumbnail_path === 'string') &&
     typeof row.created_at === 'string' &&
-    typeof row.view_count === 'number'
+    typeof row.view_count === 'number' &&
+    (row.video_type === undefined || row.video_type === 'standard' || row.video_type === 'short')
   );
 }
 
@@ -55,6 +74,7 @@ function mapVideoRow(row: VideoRow): Video {
     duration: '',
     thumbnailUrl: row.thumbnail_path ? publicUrl(row.thumbnail_path) : '',
     videoUrl: publicUrl(row.video_path),
+    videoType: row.video_type ?? 'standard',
   };
 }
 
@@ -87,14 +107,29 @@ export async function fetchOwnDailyVideoViews(): Promise<DailyVideoViews[]> {
   });
 }
 
-export async function fetchVideos(): Promise<Video[]> {
-  const { data, error } = await requireSupabase()
+export async function fetchVideos(videoType: VideoType): Promise<Video[]> {
+  const client = requireSupabase();
+  const { data, error } = await client
     .from('videos')
-    .select('id, owner_id, uploader_name, title, description, video_path, thumbnail_path, created_at, view_count')
+    .select(`${VIDEO_FIELDS}, video_type`)
+    .eq('video_type', videoType)
     .order('created_at', { ascending: false })
     .limit(100);
 
-  if (error) throw error;
+  if (error) {
+    if (!isVideoTypeColumnMissing(error)) throw error;
+    if (videoType === 'short') throw new VideoTypeSchemaMissingError();
+
+    const legacy = await client
+      .from('videos')
+      .select(VIDEO_FIELDS)
+      .order('created_at', { ascending: false })
+      .limit(100);
+    if (legacy.error) throw legacy.error;
+    if (!Array.isArray(legacy.data) || !legacy.data.every(isVideoRow)) throw new Error('Unexpected video data.');
+    return legacy.data.map(mapVideoRow);
+  }
+
   if (!Array.isArray(data) || !data.every(isVideoRow)) throw new Error('Unexpected video data.');
 
   return data.map(mapVideoRow);
@@ -108,12 +143,26 @@ export async function fetchOwnVideos(ownerId: string): Promise<Video[]> {
   for (let offset = 0; ; offset += pageSize) {
     const { data, error } = await client
       .from('videos')
-      .select('id, owner_id, uploader_name, title, description, video_path, thumbnail_path, created_at, view_count')
+      .select(`${VIDEO_FIELDS}, video_type`)
       .eq('owner_id', ownerId)
       .order('created_at', { ascending: false })
       .range(offset, offset + pageSize - 1);
 
-    if (error) throw error;
+    if (error) {
+      if (!isVideoTypeColumnMissing(error)) throw error;
+      const legacy = await client
+        .from('videos')
+        .select(VIDEO_FIELDS)
+        .eq('owner_id', ownerId)
+        .order('created_at', { ascending: false })
+        .range(offset, offset + pageSize - 1);
+      if (legacy.error) throw legacy.error;
+      if (!Array.isArray(legacy.data) || !legacy.data.every(isVideoRow)) throw new Error('Unexpected video data.');
+      videos.push(...legacy.data);
+      if (legacy.data.length < pageSize) break;
+      continue;
+    }
+
     if (!Array.isArray(data) || !data.every(isVideoRow)) throw new Error('Unexpected video data.');
     videos.push(...data);
     if (data.length < pageSize) break;
@@ -128,6 +177,7 @@ interface UploadVideoInput {
   thumbnailFile: File | null;
   title: string;
   description: string;
+  videoType: VideoType;
   onProgress: (fraction: number) => void;
 }
 
@@ -169,6 +219,7 @@ export async function uploadVideo({
   thumbnailFile,
   title,
   description,
+  videoType,
   onProgress,
 }: UploadVideoInput): Promise<void> {
   const client = requireSupabase();
@@ -199,6 +250,7 @@ export async function uploadVideo({
       thumbnail_path: thumbnailPath,
       mime_type: videoFile.type,
       file_size: videoFile.size,
+      video_type: videoType,
     });
     if (error) throw error;
   } catch (error) {

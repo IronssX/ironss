@@ -8,8 +8,10 @@ import { uploadVideo } from '@/services/videoService';
 import type { Page } from '@/types/navigation';
 import { useLanguage } from '@/hooks/useLanguage';
 import { translate, type Language } from '@/i18n';
+import type { VideoType } from '@/types/video';
 import {
   formatFileSize,
+  validateShortVideoOrientation,
   validateVideoForm,
   type VideoFormErrors,
   type VideoFormValues,
@@ -18,13 +20,15 @@ import {
 interface UploadPageProps {
   onNavigate: (page: Page) => void;
   onUploaded: () => void;
+  videoType: VideoType;
+  shortsSchemaMissing?: boolean;
 }
 
 type UploadStatus = 'idle' | 'uploading' | 'success';
 
 const EMPTY_VALUES: VideoFormValues = { title: '', description: '', videoFile: null, thumbnailFile: null };
 
-export function UploadPage({ onNavigate, onUploaded }: UploadPageProps) {
+export function UploadPage({ onNavigate, onUploaded, videoType, shortsSchemaMissing = false }: UploadPageProps) {
   const { language, t } = useLanguage();
   const { user, isLoading } = useAuth();
   const [values, setValues] = useState<VideoFormValues>(EMPTY_VALUES);
@@ -33,7 +37,9 @@ export function UploadPage({ onNavigate, onUploaded }: UploadPageProps) {
   const [status, setStatus] = useState<UploadStatus>('idle');
   const [progress, setProgress] = useState(0);
   const [thumbnailPreview, setThumbnailPreview] = useState<string | null>(null);
+  const [isValidatingVideo, setIsValidatingVideo] = useState(false);
   const videoInputRef = useRef<HTMLInputElement>(null);
+  const validationRequestRef = useRef(0);
 
   useEffect(() => {
     if (!values.thumbnailFile) {
@@ -61,6 +67,20 @@ export function UploadPage({ onNavigate, onUploaded }: UploadPageProps) {
     );
   }
 
+  if (videoType === 'short' && shortsSchemaMissing) {
+    return (
+      <AuthCard title={t('shorts.migrationTitle')} subtitle={t('shorts.migrationRequired')}>
+        <button
+          type="button"
+          onClick={() => onNavigate('shorts')}
+          className="flex h-11 items-center justify-center rounded-lg bg-neon-500 px-4 text-sm font-medium text-white transition-colors hover:bg-neon-400"
+        >
+          {t('shorts.back')}
+        </button>
+      </AuthCard>
+    );
+  }
+
   if (status === 'success') {
     return (
       <AuthCard title={t('upload.successTitle')} subtitle={t('upload.successSubtitle')}>
@@ -69,7 +89,7 @@ export function UploadPage({ onNavigate, onUploaded }: UploadPageProps) {
         </div>
         <button
           type="button"
-          onClick={() => onNavigate('home')}
+          onClick={() => onNavigate(videoType === 'short' ? 'shorts' : 'home')}
           className="flex h-11 items-center justify-center rounded-lg bg-neon-500 px-4 text-sm font-medium text-white transition-colors hover:bg-neon-400"
         >
           {t('upload.backHome')}
@@ -87,7 +107,29 @@ export function UploadPage({ onNavigate, onUploaded }: UploadPageProps) {
 
   const handleFileChange = (name: 'videoFile' | 'thumbnailFile') => (event: ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0] ?? null;
-    setValues((current) => ({ ...current, [name]: file }));
+    if (name === 'videoFile') {
+      validationRequestRef.current += 1;
+      setIsValidatingVideo(false);
+    }
+    if (name !== 'videoFile' || videoType !== 'short' || !file) {
+      setValues((current) => ({ ...current, [name]: file }));
+      if (name === 'videoFile') setErrors((current) => ({ ...current, videoFile: undefined }));
+      return;
+    }
+
+    const requestId = validationRequestRef.current;
+    setValues((current) => ({ ...current, videoFile: null }));
+    setErrors((current) => ({ ...current, videoFile: undefined }));
+    setIsValidatingVideo(true);
+    void validateShortVideoOrientation(file, language).then((error) => {
+      if (requestId !== validationRequestRef.current) return;
+      setIsValidatingVideo(false);
+      if (error) {
+        setErrors((current) => ({ ...current, videoFile: error }));
+        return;
+      }
+      setValues((current) => ({ ...current, videoFile: file }));
+    });
   };
 
   const handleSubmit = async (event: FormEvent<HTMLFormElement>) => {
@@ -95,7 +137,7 @@ export function UploadPage({ onNavigate, onUploaded }: UploadPageProps) {
     const nextErrors = validateVideoForm(values, language);
     setErrors(nextErrors);
     setFormError(null);
-    if (Object.keys(nextErrors).length > 0 || !values.videoFile) return;
+    if (Object.keys(nextErrors).length > 0 || !values.videoFile || isValidatingVideo) return;
 
     setStatus('uploading');
     setProgress(0);
@@ -106,6 +148,7 @@ export function UploadPage({ onNavigate, onUploaded }: UploadPageProps) {
         thumbnailFile: values.thumbnailFile,
         title: values.title.trim(),
         description: values.description.trim(),
+        videoType,
         onProgress: setProgress,
       });
       setStatus('success');
@@ -120,9 +163,11 @@ export function UploadPage({ onNavigate, onUploaded }: UploadPageProps) {
     <div className="auth-shell mx-auto flex w-full max-w-2xl animate-fade-in flex-col gap-7 rounded-[28px] border border-white/[0.08] p-6 sm:p-9">
       <div>
         <p className="eyebrow">{t('studio.title')}</p>
-        <h1 className="mt-2 text-3xl font-semibold tracking-tight text-white">{t('upload.title')}</h1>
+        <h1 className="mt-2 text-3xl font-semibold tracking-tight text-white">{t(videoType === 'short' ? 'shorts.uploadTitle' : 'upload.title')}</h1>
         <p className="mt-2 text-sm leading-relaxed text-gray-400">
-          {t('upload.formats', { size: formatFileSize(VIDEO_UPLOAD_LIMITS.maxVideoBytes, language) })}
+          {videoType === 'short'
+            ? t('shorts.uploadFormats', { size: formatFileSize(VIDEO_UPLOAD_LIMITS.maxVideoBytes, language) })
+            : t('upload.formats', { size: formatFileSize(VIDEO_UPLOAD_LIMITS.maxVideoBytes, language) })}
         </p>
       </div>
 
@@ -131,7 +176,7 @@ export function UploadPage({ onNavigate, onUploaded }: UploadPageProps) {
           <span className="text-sm font-medium text-gray-200">{t('upload.videoFile')}</span>
           <button
             type="button"
-            disabled={isUploading}
+            disabled={isUploading || isValidatingVideo}
             onClick={() => videoInputRef.current?.click()}
             className={`flex min-h-[7rem] flex-col items-center justify-center gap-2 rounded-xl border border-dashed px-4 py-6 text-center transition-colors disabled:cursor-not-allowed disabled:opacity-60 ${
               errors.videoFile ? 'border-red-500/70' : 'border-white/10 bg-white/[0.02] hover:border-neon-300/40 hover:bg-neon-300/[0.035]'
@@ -139,7 +184,7 @@ export function UploadPage({ onNavigate, onUploaded }: UploadPageProps) {
           >
             <Film className="h-7 w-7 text-neon-200" />
             <span className="text-sm text-gray-200">
-              {values.videoFile ? values.videoFile.name : t('upload.chooseVideo')}
+              {values.videoFile ? values.videoFile.name : isValidatingVideo ? t('shorts.validating') : videoType === 'short' ? t('shorts.chooseVideo') : t('upload.chooseVideo')}
             </span>
             {values.videoFile && (
               <span className="text-xs text-gray-500">{formatFileSize(values.videoFile.size, language)}</span>
@@ -187,7 +232,7 @@ export function UploadPage({ onNavigate, onUploaded }: UploadPageProps) {
           {errors.description && <p className="text-xs text-red-300">{errors.description}</p>}
         </div>
 
-        <div className="flex flex-col gap-2">
+        {videoType === 'standard' && <div className="flex flex-col gap-2">
           <span className="text-sm font-medium text-gray-200">
             {t('upload.thumbnail')} <span className="text-gray-500">({t('upload.optional')})</span>
           </span>
@@ -216,7 +261,7 @@ export function UploadPage({ onNavigate, onUploaded }: UploadPageProps) {
             />
           </label>
           {errors.thumbnailFile && <p className="text-xs text-red-300">{errors.thumbnailFile}</p>}
-        </div>
+        </div>}
 
         {isUploading && (
           <div className="flex flex-col gap-2" role="status" aria-live="polite">
@@ -241,8 +286,8 @@ export function UploadPage({ onNavigate, onUploaded }: UploadPageProps) {
 
         <button
           type="submit"
-          disabled={isUploading}
-          className="flex h-11 items-center justify-center gap-2 rounded-lg bg-neon-500 px-4 text-sm font-medium text-white shadow-[0_0_20px_-6px_rgba(176,38,255,0.9)] transition-all duration-200 hover:bg-neon-400 active:scale-95 disabled:cursor-not-allowed disabled:opacity-60"
+          disabled={isUploading || isValidatingVideo}
+          className="primary-button h-11 w-full"
         >
           <Upload className="h-4 w-4" />
           {isUploading ? t('upload.progress') : t('upload.submit')}

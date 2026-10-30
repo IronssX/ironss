@@ -1,6 +1,7 @@
 export type Page =
   | 'home'
   | 'explore'
+  | 'shorts'
   | 'subscriptions'
   | 'library'
   | 'notifications'
@@ -9,5 +10,6 @@ export type Page =
   | 'register'
   | 'profile'
   | 'upload'
+  | 'shorts-upload'
   | 'channel'
   | 'studio';

@@ -8,6 +8,7 @@ import { PlaceholderPage } from '@/pages/PlaceholderPage';
 import type { Page } from '@/types/navigation';
 import type { Video } from '@/types/video';
 import { useLanguage } from '@/hooks/useLanguage';
+import { useState } from 'react';
 
 interface ChannelPageProps {
   channelId: string;
@@ -18,6 +19,7 @@ interface ChannelPageProps {
 
 export function ChannelPage({ channelId, videos, onSelectVideo, onNavigate }: ChannelPageProps) {
   const { t } = useLanguage();
+  const [videoType, setVideoType] = useState<'standard' | 'short'>('standard');
   const { user } = useAuth();
   const { channel, avatarUrl, isLoading, error, isSubscriptionBusy, subscriptionError, toggleSubscription } =
     useChannel(channelId);
@@ -43,6 +45,8 @@ export function ChannelPage({ channelId, videos, onSelectVideo, onNavigate }: Ch
       />
     );
   }
+
+  const displayedVideos = videos.filter((video) => (video.videoType ?? 'standard') === videoType);
 
   return (
     <div className="flex w-full animate-fade-in flex-col gap-8">
@@ -71,10 +75,29 @@ export function ChannelPage({ channelId, videos, onSelectVideo, onNavigate }: Ch
       />
 
       <section className="flex flex-col gap-5">
-        <h2 className="text-lg font-bold text-white">{t('channel.videoList')}</h2>
-        {videos.length > 0 ? (
+        <div className="flex flex-wrap items-center justify-between gap-3">
+          <h2 className="text-lg font-bold text-white">{t('channel.videoList')}</h2>
+          <div className="flex gap-2" role="group" aria-label={t('channel.videoList')}>
+            {(['standard', 'short'] as const).map((type) => (
+              <button
+                key={type}
+                type="button"
+                onClick={() => setVideoType(type)}
+                aria-pressed={videoType === type}
+                className={`rounded-full border px-3 py-1.5 text-xs font-medium transition-colors ${
+                  videoType === type
+                    ? 'border-neon-400/40 bg-neon-400/10 text-neon-200'
+                    : 'border-surface-border text-gray-400 hover:text-white'
+                }`}
+              >
+                {t(type === 'short' ? 'channel.shorts' : 'channel.standardVideos')}
+              </button>
+            ))}
+          </div>
+        </div>
+        {displayedVideos.length > 0 ? (
           <div className="grid grid-cols-1 gap-x-5 gap-y-8 sm:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-4">
-            {videos.map((video) => (
+            {displayedVideos.map((video) => (
               <VideoCard key={video.id} video={video} onSelect={onSelectVideo} />
             ))}
           </div>

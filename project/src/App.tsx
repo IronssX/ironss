@@ -13,6 +13,7 @@ import { RegisterPage } from '@/pages/RegisterPage';
 import { UploadPage } from '@/pages/UploadPage';
 import { WatchPage } from '@/pages/WatchPage';
 import { CreatorStudioPage } from '@/pages/CreatorStudioPage';
+import { ShortsPage } from '@/pages/ShortsPage';
 import type { Page } from '@/types/navigation';
 import type { CategoryFilter } from '@/types/video';
 import { useLanguage } from '@/hooks/useLanguage';
@@ -26,7 +27,13 @@ function App() {
   const [category, setCategory] = useState<CategoryFilter>('All');
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
 
-  const { videos: uploadedVideos, error: uploadsError, refresh: refreshUploads } = useUploadedVideos();
+  const {
+    videos: uploadedVideos,
+    shorts: uploadedShorts,
+    shortsSchemaMissing,
+    error: uploadsError,
+    refresh: refreshUploads,
+  } = useUploadedVideos();
   const [viewOverrides, setViewOverrides] = useState<Record<string, number>>({});
   const allVideos = useMemo(
     () =>
@@ -35,6 +42,14 @@ function App() {
       ),
     [uploadedVideos, viewOverrides],
   );
+  const allShorts = useMemo(
+    () =>
+      uploadedShorts.map((video) =>
+        viewOverrides[video.id] === undefined ? video : { ...video, views: viewOverrides[video.id] },
+      ),
+    [uploadedShorts, viewOverrides],
+  );
+  const allUploadedVideos = useMemo(() => [...allVideos, ...allShorts], [allVideos, allShorts]);
 
   const handleViewRecorded = (videoId: string, views: number) => {
     setViewOverrides((current) => ({ ...current, [videoId]: views }));
@@ -45,7 +60,7 @@ function App() {
     [allVideos],
   );
 
-  const selectedVideo = allVideos.find((video) => video.id === selectedVideoId) ?? null;
+  const selectedVideo = allUploadedVideos.find((video) => video.id === selectedVideoId) ?? null;
 
   const scrollToTop = () => window.scrollTo({ top: 0, behavior: 'smooth' });
 
@@ -111,6 +126,15 @@ function App() {
             isHome={false}
           />
         );
+      case 'shorts':
+        return (
+          <ShortsPage
+            videos={allShorts}
+            schemaMissing={shortsSchemaMissing}
+            onNavigate={navigate}
+            onOpenChannel={openChannel}
+          />
+        );
       case 'login':
         return <LoginPage onNavigate={navigate} />;
       case 'register':
@@ -140,7 +164,16 @@ function App() {
           />
         );
       case 'upload':
-        return <UploadPage onNavigate={navigate} onUploaded={refreshUploads} />;
+        return <UploadPage onNavigate={navigate} onUploaded={refreshUploads} videoType="standard" />;
+      case 'shorts-upload':
+        return (
+          <UploadPage
+            onNavigate={navigate}
+            onUploaded={refreshUploads}
+            videoType="short"
+            shortsSchemaMissing={shortsSchemaMissing}
+          />
+        );
       case 'studio':
         return <CreatorStudioPage onNavigate={navigate} onSelectVideo={openVideo} />;
       case 'channel':
@@ -159,7 +192,7 @@ function App() {
           <ChannelPage
             key={selectedChannelId}
             channelId={selectedChannelId}
-            videos={allVideos.filter((video) => video.ownerId === selectedChannelId)}
+            videos={allUploadedVideos.filter((video) => video.ownerId === selectedChannelId)}
             onSelectVideo={openVideo}
             onNavigate={navigate}
           />
@@ -179,7 +212,7 @@ function App() {
         return (
           <WatchPage
             video={selectedVideo}
-            relatedVideos={allVideos.filter((video) => video.id !== selectedVideo.id)}
+            relatedVideos={allUploadedVideos.filter((video) => video.id !== selectedVideo.id)}
             onBack={() => navigate('home')}
             onSelectVideo={openVideo}
             onOpenChannel={openChannel}

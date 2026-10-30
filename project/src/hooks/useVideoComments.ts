@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import type { VideoComment } from '@/types/comment';
 import { getVideoComments, saveVideoComments } from '@/utils/commentStorage';
 
@@ -9,6 +9,11 @@ function createCommentId(): string {
 export function useVideoComments(videoId: string) {
   const [comments, setComments] = useState<VideoComment[]>(() => getVideoComments(videoId));
   const [saveFailed, setSaveFailed] = useState(false);
+
+  useEffect(() => {
+    setComments(getVideoComments(videoId));
+    setSaveFailed(false);
+  }, [videoId]);
 
   const addComment = (body: string, author: string) => {
     const nextComments: VideoComment[] = [

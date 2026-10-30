@@ -203,6 +203,63 @@
     background: radial-gradient(ellipse at 50% 0%, rgba(169, 123, 206, .05), transparent 55%);
   }
 
+  .shorts-stage {
+    touch-action: pan-x;
+  }
+
+  .shorts-ambient {
+    background:
+      radial-gradient(ellipse at 50% 42%, rgba(92, 48, 119, .2), transparent 35rem),
+      linear-gradient(120deg, #09080d, #100d14 50%, #09080d);
+  }
+
+  .shorts-control-button {
+    display: flex;
+    min-width: 46px;
+    flex-direction: column;
+    align-items: center;
+    gap: 5px;
+    color: white;
+    font-size: 10px;
+    font-weight: 650;
+    text-shadow: 0 1px 5px rgba(0,0,0,.7);
+    transition: color .18s ease, transform .18s ease;
+  }
+
+  .shorts-control-button:hover {
+    color: #dec1ff;
+    transform: scale(1.06);
+  }
+
+  .shorts-nav-button {
+    display: flex;
+    height: 40px;
+    width: 40px;
+    align-items: center;
+    justify-content: center;
+    border: 1px solid rgba(255,255,255,.1);
+    border-radius: 999px;
+    background: rgba(255,255,255,.06);
+    color: rgba(255,255,255,.8);
+    transition: background .2s ease, color .2s ease;
+  }
+
+  .shorts-nav-button:hover:not(:disabled) {
+    background: rgba(195,151,255,.16);
+    color: white;
+  }
+
+  .shorts-nav-button:disabled {
+    cursor: not-allowed;
+    opacity: .3;
+  }
+
+  .shorts-empty {
+    background:
+      radial-gradient(ellipse at 50% 42%, rgba(92, 48, 119, .2), transparent 35rem),
+      #09080d;
+  }
+
   @media (max-width: 767px) {
     body {
       padding-bottom: 90px;

@@ -2,6 +2,7 @@ import {
   Bell,
   Compass,
   Home,
+  Clapperboard,
   Library,
   PanelsTopLeft,
   Plus,
@@ -27,6 +28,7 @@ interface SidebarProps {
 const NAV_ITEMS: { page: Page; label: TranslationKey; icon: LucideIcon }[] = [
   { page: 'home', label: 'sidebar.home', icon: Home },
   { page: 'explore', label: 'sidebar.explore', icon: Compass },
+  { page: 'shorts', label: 'sidebar.shorts', icon: Clapperboard },
   { page: 'subscriptions', label: 'sidebar.subscriptions', icon: Users },
   { page: 'library', label: 'sidebar.library', icon: Library },
   { page: 'notifications', label: 'topbar.notifications', icon: Bell },
@@ -38,7 +40,7 @@ export function Sidebar({ activePage, isOpen, onNavigate, onClose }: SidebarProp
   const { user } = useAuth();
   const [isMoreOpen, setIsMoreOpen] = useState(false);
   const visibleNavItems = NAV_ITEMS.filter(({ page }) => page !== 'studio' || Boolean(user));
-  const mobileItems = visibleNavItems.filter(({ page }) => ['home', 'explore', 'subscriptions', 'library'].includes(page));
+  const mobileItems = visibleNavItems.filter(({ page }) => ['home', 'explore', 'shorts', 'library'].includes(page));
 
   const navigate = (page: Page) => {
     onNavigate(page);

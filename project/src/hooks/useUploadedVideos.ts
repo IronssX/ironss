@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useState } from 'react';
-import { fetchVideos } from '@/services/videoService';
+import { fetchVideos, VideoTypeSchemaMissingError } from '@/services/videoService';
 import type { Video } from '@/types/video';
 import { useLanguage } from '@/hooks/useLanguage';
 import { translate } from '@/i18n';
@@ -8,22 +8,43 @@ import { logSupabaseFailure } from '@/utils/supabaseDiagnostics';
 export function useUploadedVideos() {
   const { language } = useLanguage();
   const [videos, setVideos] = useState<Video[]>([]);
+  const [shorts, setShorts] = useState<Video[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [hasError, setHasError] = useState(false);
+  const [shortsSchemaMissing, setShortsSchemaMissing] = useState(false);
   const [reloadCount, setReloadCount] = useState(0);
 
   useEffect(() => {
     let isCurrent = true;
     (async () => {
       try {
-        const nextVideos = await fetchVideos();
+        const [videosResult, shortsResult] = await Promise.allSettled([
+          fetchVideos('standard'),
+          fetchVideos('short'),
+        ]);
         if (!isCurrent) return;
-        setVideos(nextVideos);
-        setHasError(false);
-      } catch (error) {
-        if (!isCurrent) return;
-        logSupabaseFailure('videos', 'fetchVideos', error);
-        setHasError(true);
+
+        if (videosResult.status === 'fulfilled') {
+          setVideos(videosResult.value);
+        } else {
+          logSupabaseFailure('videos', 'fetchVideos', videosResult.reason);
+          setVideos([]);
+        }
+
+        if (shortsResult.status === 'fulfilled') {
+          setShorts(shortsResult.value);
+          setShortsSchemaMissing(false);
+        } else if (shortsResult.reason instanceof VideoTypeSchemaMissingError) {
+          setShorts([]);
+          setShortsSchemaMissing(true);
+        } else {
+          logSupabaseFailure('videos', 'fetchVideos', shortsResult.reason);
+          setShorts([]);
+          setShortsSchemaMissing(false);
+        }
+
+        setHasError(videosResult.status === 'rejected' ||
+          (shortsResult.status === 'rejected' && !(shortsResult.reason instanceof VideoTypeSchemaMissingError)));
       } finally {
         if (isCurrent) setIsLoading(false);
       }
@@ -36,5 +57,12 @@ export function useUploadedVideos() {
 
   const refresh = useCallback(() => setReloadCount((count) => count + 1), []);
 
-  return { videos, isLoading, error: hasError ? translate(language, 'videos.fetchFailed') : null, refresh };
+  return {
+    videos,
+    shorts,
+    shortsSchemaMissing,
+    isLoading,
+    error: hasError ? translate(language, 'videos.fetchFailed') : null,
+    refresh,
+  };
 }

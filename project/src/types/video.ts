@@ -10,6 +10,7 @@ export const CATEGORIES = [
 
 export type Category = (typeof CATEGORIES)[number];
 export type CategoryFilter = 'All' | Category;
+export type VideoType = 'standard' | 'short';
 
 export interface Video {
   id: string;
@@ -23,5 +24,6 @@ export interface Video {
   duration: string;
   thumbnailUrl: string;
   videoUrl: string;
+  videoType: VideoType;
   ownerId?: string;
 }

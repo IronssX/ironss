@@ -21,7 +21,7 @@ import type { TranslationKey } from '@/i18n';
 import { fetchOwnDailyVideoViews, fetchOwnVideos, type DailyVideoViews } from '@/services/videoService';
 import { fetchSubscriberCount } from '@/services/channelService';
 import type { Page } from '@/types/navigation';
-import type { Video } from '@/types/video';
+import type { Video, VideoType } from '@/types/video';
 import { formatExactCount, formatUploadDate, formatViews } from '@/utils/format';
 
 interface CreatorStudioPageProps {
@@ -255,13 +255,36 @@ interface ContentSectionProps extends SectionTranslationProps {
 }
 
 function ContentSection({ videos, language, t, onSelectVideo, onUpload }: ContentSectionProps) {
+  const [videoType, setVideoType] = useState<VideoType>('standard');
+  const displayedVideos = videos.filter((video) => (video.videoType ?? 'standard') === videoType);
+
   return (
     <div className="flex flex-col gap-5">
       <div>
         <h2 className="text-xl font-bold text-white">{t('studio.contentTitle')}</h2>
         <p className="mt-1 text-sm text-gray-400">{t('studio.contentDescription')}</p>
       </div>
-      {videos.length > 0 ? (
+      <div className="flex gap-2" role="group" aria-label={t('studio.contentTitle')}>
+        {(['standard', 'short'] as const).map((type) => (
+          <button
+            key={type}
+            type="button"
+            onClick={() => setVideoType(type)}
+            aria-pressed={videoType === type}
+            className={`rounded-full border px-3 py-1.5 text-xs font-medium transition-colors ${
+              videoType === type
+                ? 'border-neon-400/40 bg-neon-400/10 text-neon-200'
+                : 'border-surface-border text-gray-400 hover:text-white'
+            }`}
+          >
+            {t(type === 'short' ? 'studio.shortsVideos' : 'studio.standardVideos')}
+            <span className="ml-1.5 text-gray-500">
+              ({videos.filter((video) => (video.videoType ?? 'standard') === type).length})
+            </span>
+          </button>
+        ))}
+      </div>
+      {displayedVideos.length > 0 ? (
         <div className="divide-y divide-surface-border border-y border-surface-border">
           <div className="hidden grid-cols-[minmax(0,1fr)_8rem_8rem_10rem] gap-4 py-3 text-xs font-semibold uppercase text-gray-500 md:grid">
             <span>{t('studio.tableVideo')}</span>
@@ -269,10 +292,14 @@ function ContentSection({ videos, language, t, onSelectVideo, onUpload }: Conten
             <span>{t('studio.tableLikes')}</span>
             <span>{t('studio.tableDate')}</span>
           </div>
-          {videos.map((video) => (
+          {displayedVideos.map((video) => (
             <StudioVideoItem key={video.id} video={video} language={language} t={t} onSelect={onSelectVideo} detailed />
           ))}
         </div>
+      ) : videos.length > 0 ? (
+        <p className="rounded-xl border border-dashed border-surface-border bg-surface/50 px-6 py-10 text-center text-sm text-gray-400">
+          {t('studio.noVideosOfType')}
+        </p>
       ) : (
         <EmptyVideos t={t} onUpload={onUpload} />
       )}
