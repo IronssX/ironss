@@ -2,7 +2,6 @@ import { Library, Users } from 'lucide-react';
 import { useMemo, useState } from 'react';
 import { Sidebar } from '@/components/Sidebar';
 import { TopBar } from '@/components/TopBar';
-import { sampleVideos } from '@/data/sampleVideos';
 import { useUploadedVideos } from '@/hooks/useUploadedVideos';
 import { ChannelPage } from '@/pages/ChannelPage';
 import { FeedPage } from '@/pages/FeedPage';
@@ -30,7 +29,7 @@ function App() {
   const [viewOverrides, setViewOverrides] = useState<Record<string, number>>({});
   const allVideos = useMemo(
     () =>
-      [...uploadedVideos, ...sampleVideos].map((video) =>
+      uploadedVideos.map((video) =>
         viewOverrides[video.id] === undefined ? video : { ...video, views: viewOverrides[video.id] },
       ),
     [uploadedVideos, viewOverrides],
