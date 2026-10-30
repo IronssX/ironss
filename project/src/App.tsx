@@ -1,4 +1,4 @@
-import { Library, Users } from 'lucide-react';
+import { BellRing, Library, Users } from 'lucide-react';
 import { useMemo, useState } from 'react';
 import { Sidebar } from '@/components/Sidebar';
 import { TopBar } from '@/components/TopBar';
@@ -6,6 +6,7 @@ import { useUploadedVideos } from '@/hooks/useUploadedVideos';
 import { ChannelPage } from '@/pages/ChannelPage';
 import { FeedPage } from '@/pages/FeedPage';
 import { LoginPage } from '@/pages/LoginPage';
+import { LibraryPage } from '@/pages/LibraryPage';
 import { PlaceholderPage } from '@/pages/PlaceholderPage';
 import { ProfilePage } from '@/pages/ProfilePage';
 import { RegisterPage } from '@/pages/RegisterPage';
@@ -90,6 +91,8 @@ function App() {
             onResetFilters={resetFilters}
             onSelectVideo={openVideo}
             onOpenChannel={openChannel}
+            onNavigate={navigate}
+            isHome
           />
         );
       case 'explore':
@@ -104,6 +107,8 @@ function App() {
             onResetFilters={resetFilters}
             onSelectVideo={openVideo}
             onOpenChannel={openChannel}
+            onNavigate={navigate}
+            isHome={false}
           />
         );
       case 'login':
@@ -123,11 +128,13 @@ function App() {
           />
         );
       case 'library':
+        return <LibraryPage videos={allVideos} onSelectVideo={openVideo} onOpenChannel={openChannel} />;
+      case 'notifications':
         return (
           <PlaceholderPage
-            icon={Library}
-            title={t('placeholder.libraryTitle')}
-            message={t('placeholder.libraryMessage')}
+            icon={BellRing}
+            title={t('placeholder.notificationsTitle')}
+            message={t('placeholder.notificationsMessage')}
             actionLabel={t('placeholder.backHome')}
             onAction={() => navigate('home')}
           />
@@ -183,7 +190,7 @@ function App() {
   };
 
   return (
-    <div className="min-h-screen bg-background text-gray-100">
+    <div className="min-h-screen text-gray-100">
       <TopBar
         query={query}
         onQueryChange={handleQueryChange}
@@ -192,7 +199,7 @@ function App() {
         onNavigate={navigate}
       />
 
-      <div className="flex pt-16">
+      <div className="flex pt-[76px]">
         <Sidebar
           activePage={page}
           isOpen={isSidebarOpen}
@@ -200,7 +207,7 @@ function App() {
           onClose={() => setIsSidebarOpen(false)}
         />
 
-        <main className="min-w-0 flex-1 px-4 py-6 sm:px-6 lg:px-8">
+        <main className="min-w-0 flex-1 px-4 pb-8 pt-6 sm:px-6 sm:pt-8 lg:px-9">
           {uploadsError && (
             <p role="alert" className="mb-6 rounded-lg border border-red-500/40 bg-red-500/10 px-4 py-3 text-sm text-red-200">
               {uploadsError}

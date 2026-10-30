@@ -22,7 +22,7 @@ export function WatchPage({ video, relatedVideos, onBack, onSelectVideo, onOpenC
   const { language, t } = useLanguage();
   const recordedVideoIdRef = useRef<string | null>(null);
   const handlePlay = () => {
-    if (video.source !== 'uploaded' || recordedVideoIdRef.current === video.id) return;
+    if (recordedVideoIdRef.current === video.id) return;
     const videoId = video.id;
     recordedVideoIdRef.current = videoId;
     recordVideoView(videoId)
@@ -43,17 +43,17 @@ export function WatchPage({ video, relatedVideos, onBack, onSelectVideo, onOpenC
       </span>
       <div className="min-w-0 text-left">
         <p className="truncate text-sm font-bold text-gray-100">{video.creator}</p>
-        <p className="text-xs text-gray-500">{video.source === 'uploaded' ? t('watch.memberUpload') : t('watch.sampleChannel')}</p>
+        <p className="text-xs text-gray-500">{t('watch.memberUpload')}</p>
       </div>
     </>
   );
   return (
-    <div className="grid grid-cols-1 gap-8 lg:grid-cols-[minmax(0,1fr)_340px] xl:gap-10">
+    <div className="mx-auto grid w-full max-w-[1480px] grid-cols-1 gap-8 lg:grid-cols-[minmax(0,1fr)_320px] xl:gap-10">
       <div className="flex min-w-0 flex-col gap-5">
         <button
           type="button"
           onClick={onBack}
-          className="flex w-fit items-center gap-2 rounded-lg text-sm font-medium text-gray-400 transition-colors hover:text-white"
+          className="ghost-button h-10 w-fit px-3 text-xs"
         >
           <ArrowLeft className="h-4 w-4" />
           {t('watch.backHome')}
@@ -63,10 +63,10 @@ export function WatchPage({ video, relatedVideos, onBack, onSelectVideo, onOpenC
 
         <div className="flex flex-col gap-4">
           <div>
-            <span className="inline-block rounded-md border border-neon-500/40 bg-neon-500/10 px-2 py-0.5 text-[10px] font-bold uppercase tracking-wider text-neon-300">
-              {video.source === 'uploaded' ? t('watch.uploaded') : t('watch.sample')}
+            <span className="inline-block rounded-full border border-neon-300/15 bg-neon-300/[0.06] px-2.5 py-1 text-[9px] font-bold uppercase tracking-[.17em] text-neon-200">
+              {t('watch.uploaded')}
             </span>
-            <h1 className="mt-3 text-xl font-bold leading-snug text-white sm:text-2xl">{video.title}</h1>
+            <h1 className="mt-3 text-2xl font-semibold leading-snug tracking-tight text-white sm:text-[30px]">{video.title}</h1>
             <p className="mt-2 flex flex-wrap items-center gap-x-2 text-sm text-gray-400">
               <Eye className="h-4 w-4" />
               {formatViews(video.views, language)} &middot; {formatUploadDate(video.uploadedAt, Date.now(), language)}
@@ -74,7 +74,7 @@ export function WatchPage({ video, relatedVideos, onBack, onSelectVideo, onOpenC
             </p>
           </div>
 
-          <div className="flex items-center justify-between gap-3 border-y border-surface-border py-4">
+          <div className="flex items-center justify-between gap-3 border-y border-white/[0.07] py-4">
             {channelId ? (
               <button
                 type="button"
@@ -90,7 +90,7 @@ export function WatchPage({ video, relatedVideos, onBack, onSelectVideo, onOpenC
             <LikeButton key={video.id} videoId={video.id} baseLikes={video.likes} />
           </div>
 
-          <p className="rounded-xl bg-surface p-4 text-sm leading-relaxed text-gray-300">
+          <p className="rounded-2xl border border-white/[0.06] bg-white/[0.025] p-5 text-sm leading-relaxed text-gray-300">
             {video.description}
           </p>
 
@@ -98,8 +98,8 @@ export function WatchPage({ video, relatedVideos, onBack, onSelectVideo, onOpenC
         </div>
       </div>
 
-      <aside className="flex flex-col gap-4">
-        <h2 className="text-sm font-bold uppercase tracking-wider text-gray-400">{t('watch.upNext')}</h2>
+      <aside className="flex flex-col gap-4 lg:sticky lg:top-24 lg:self-start">
+        <h2 className="eyebrow">{t('watch.upNext')}</h2>
         {relatedVideos.length > 0 ? (
           <ul className="flex flex-col gap-4">
             {relatedVideos.map((related) => (
@@ -109,7 +109,7 @@ export function WatchPage({ video, relatedVideos, onBack, onSelectVideo, onOpenC
                   onClick={() => onSelectVideo(related.id)}
                   className="group flex w-full gap-3 rounded-xl text-left focus-visible:outline focus-visible:outline-2 focus-visible:outline-neon-400"
                 >
-                  <div className="relative aspect-video w-40 shrink-0 overflow-hidden rounded-lg border border-surface-border">
+                  <div className="relative aspect-video w-40 shrink-0 overflow-hidden rounded-xl border border-white/[0.08]">
                     <Thumbnail
                       src={related.thumbnailUrl}
                       alt={t('watch.thumbnailAlt', { title: related.title })}
@@ -122,7 +122,7 @@ export function WatchPage({ video, relatedVideos, onBack, onSelectVideo, onOpenC
                       )}
                   </div>
                   <div className="min-w-0">
-                    <h3 className="line-clamp-2 text-sm font-medium leading-snug text-gray-100 transition-colors group-hover:text-neon-300">
+                    <h3 className="line-clamp-2 text-[13px] font-semibold leading-snug text-gray-100 transition-colors group-hover:text-neon-200">
                       {related.title}
                     </h3>
                     <p className="mt-1 truncate text-xs text-gray-400">{related.creator}</p>

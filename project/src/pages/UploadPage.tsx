@@ -117,9 +117,10 @@ export function UploadPage({ onNavigate, onUploaded }: UploadPageProps) {
   };
 
   return (
-    <div className="mx-auto flex w-full max-w-2xl animate-fade-in flex-col gap-6 rounded-2xl border border-surface-border bg-surface p-6 shadow-[0_0_40px_-12px_rgba(176,38,255,0.5)] sm:p-8">
+    <div className="auth-shell mx-auto flex w-full max-w-2xl animate-fade-in flex-col gap-7 rounded-[28px] border border-white/[0.08] p-6 sm:p-9">
       <div>
-        <h1 className="text-2xl font-bold text-white">{t('upload.title')}</h1>
+        <p className="eyebrow">{t('studio.title')}</p>
+        <h1 className="mt-2 text-3xl font-semibold tracking-tight text-white">{t('upload.title')}</h1>
         <p className="mt-2 text-sm leading-relaxed text-gray-400">
           {t('upload.formats', { size: formatFileSize(VIDEO_UPLOAD_LIMITS.maxVideoBytes, language) })}
         </p>
@@ -133,10 +134,10 @@ export function UploadPage({ onNavigate, onUploaded }: UploadPageProps) {
             disabled={isUploading}
             onClick={() => videoInputRef.current?.click()}
             className={`flex min-h-[7rem] flex-col items-center justify-center gap-2 rounded-xl border border-dashed px-4 py-6 text-center transition-colors disabled:cursor-not-allowed disabled:opacity-60 ${
-              errors.videoFile ? 'border-red-500/70' : 'border-neon-500/50 hover:border-neon-400 hover:bg-neon-500/5'
+              errors.videoFile ? 'border-red-500/70' : 'border-white/10 bg-white/[0.02] hover:border-neon-300/40 hover:bg-neon-300/[0.035]'
             }`}
           >
-            <Film className="h-7 w-7 text-neon-300" />
+            <Film className="h-7 w-7 text-neon-200" />
             <span className="text-sm text-gray-200">
               {values.videoFile ? values.videoFile.name : t('upload.chooseVideo')}
             </span>
@@ -195,7 +196,7 @@ export function UploadPage({ onNavigate, onUploaded }: UploadPageProps) {
               isUploading ? 'pointer-events-none opacity-60' : ''
             }`}
           >
-            <span className="flex aspect-video w-32 shrink-0 items-center justify-center overflow-hidden rounded-lg border border-surface-border bg-background">
+            <span className="flex aspect-video w-32 shrink-0 items-center justify-center overflow-hidden rounded-xl border border-white/[0.08] bg-background">
               {thumbnailPreview ? (
                 <img src={thumbnailPreview} alt={t('upload.selectedThumbnail')} className="h-full w-full object-cover" />
               ) : (

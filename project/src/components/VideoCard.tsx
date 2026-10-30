@@ -24,23 +24,18 @@ export function VideoCard({ video, onSelect, onOpenChannel }: VideoCardProps) {
   );
 
   return (
-    <div className="group flex w-full animate-fade-in flex-col rounded-xl">
+    <article className="video-card group flex w-full animate-fade-in flex-col rounded-2xl">
       <button
         type="button"
         onClick={() => onSelect(video.id)}
-        className="flex w-full flex-col text-left focus-visible:outline focus-visible:outline-2 focus-visible:outline-neon-400 rounded-xl"
+        className="flex w-full flex-col rounded-2xl text-left focus-visible:outline focus-visible:outline-2 focus-visible:outline-neon-400"
       >
-        <div className="relative aspect-video w-full overflow-hidden rounded-xl border border-surface-border bg-surface-raised transition-all duration-300 group-hover:-translate-y-0.5 group-hover:border-neon-500/60 group-hover:shadow-[0_12px_32px_-12px_rgba(176,38,255,0.6)]">
+        <div className="video-card-media relative aspect-video w-full overflow-hidden rounded-2xl border border-white/[0.08] bg-surface-raised transition-all duration-300 group-hover:-translate-y-1 group-hover:border-neon-300/25 group-hover:shadow-[0_18px_42px_-20px_rgba(176,38,255,.65)]">
           <Thumbnail
             src={video.thumbnailUrl}
             alt={t('video.thumbnailAlt', { title: video.title })}
             className="h-full w-full transition-transform duration-500 group-hover:scale-105"
           />
-          {video.source !== 'uploaded' && (
-            <span className="absolute left-2 top-2 rounded-md bg-black/75 px-1.5 py-0.5 text-[10px] font-bold uppercase tracking-wider text-neon-300">
-              {t('video.sampleBadge')}
-            </span>
-          )}
           {video.duration && (
             <span className="absolute bottom-2 right-2 rounded-md bg-black/80 px-1.5 py-0.5 text-xs font-medium text-white">
               {video.duration}
@@ -49,7 +44,7 @@ export function VideoCard({ video, onSelect, onOpenChannel }: VideoCardProps) {
         </div>
       </button>
 
-      <div className="mt-3 flex gap-3">
+      <div className="mt-3.5 flex gap-3">
         {canOpenChannel ? (
           <button
             type="button"
@@ -68,7 +63,7 @@ export function VideoCard({ video, onSelect, onOpenChannel }: VideoCardProps) {
             onClick={() => onSelect(video.id)}
             className="block w-full text-left focus-visible:outline focus-visible:outline-2 focus-visible:outline-neon-400 rounded"
           >
-            <span className="line-clamp-2 text-sm font-medium leading-snug text-gray-100 transition-colors group-hover:text-neon-300">
+            <span className="line-clamp-2 text-[14px] font-semibold leading-[1.45] text-gray-100 transition-colors group-hover:text-neon-200">
               {video.title}
             </span>
           </button>
@@ -83,11 +78,11 @@ export function VideoCard({ video, onSelect, onOpenChannel }: VideoCardProps) {
           ) : (
             <p className="mt-1 truncate text-xs text-gray-400">{video.creator}</p>
           )}
-          <p className="text-xs text-gray-500">
+          <p className="mt-1 text-[11px] text-gray-500">
             {formatViews(video.views, language)} &middot; {formatUploadDate(video.uploadedAt, Date.now(), language)}
           </p>
         </div>
       </div>
-    </div>
+    </article>
   );
 }

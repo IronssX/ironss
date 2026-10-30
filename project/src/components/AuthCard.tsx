@@ -1,4 +1,5 @@
 import type { ReactNode } from 'react';
+import { Logo } from '@/components/Logo';
 
 interface AuthCardProps {
   title: string;
@@ -8,9 +9,12 @@ interface AuthCardProps {
 
 export function AuthCard({ title, subtitle, children }: AuthCardProps) {
   return (
-    <div className="mx-auto flex w-full max-w-md animate-fade-in flex-col gap-6 rounded-2xl border border-surface-border bg-surface p-6 shadow-[0_0_40px_-12px_rgba(176,38,255,0.5)] sm:p-8">
+    <div className="auth-shell mx-auto flex w-full max-w-[440px] animate-fade-in flex-col gap-7 rounded-[28px] border border-white/[0.08] p-6 sm:p-9">
+      <div className="flex justify-center">
+        <Logo />
+      </div>
       <div className="text-center">
-        <h1 className="text-2xl font-bold text-white">{title}</h1>
+        <h1 className="text-[26px] font-semibold tracking-tight text-white">{title}</h1>
         <p className="mt-2 text-sm leading-relaxed text-gray-400">{subtitle}</p>
       </div>
       {children}

@@ -23,6 +23,5 @@ export interface Video {
   duration: string;
   thumbnailUrl: string;
   videoUrl: string;
-  source?: 'uploaded';
   ownerId?: string;
 }

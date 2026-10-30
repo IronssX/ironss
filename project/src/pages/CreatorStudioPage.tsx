@@ -99,10 +99,10 @@ export function CreatorStudioPage({ onNavigate, onSelectVideo }: CreatorStudioPa
   const ownVideos = videos.filter((video) => video.ownerId === user.id);
   const totalViews = ownVideos.reduce((total, video) => total + video.views, 0);
   return (
-    <div className="mx-auto flex w-full max-w-[1500px] flex-col gap-6 animate-fade-in">
-      <header className="flex flex-col gap-1 border-b border-surface-border pb-5">
-        <p className="text-xs font-semibold uppercase text-neon-300">IRONSS</p>
-        <h1 className="text-2xl font-bold text-white">{t('studio.title')}</h1>
+    <div className="mx-auto flex w-full max-w-[1480px] flex-col gap-7 animate-fade-in">
+      <header className="flex flex-col gap-2 border-b border-white/[0.07] pb-6">
+        <p className="eyebrow">IRONSS / CREATOR</p>
+        <h1 className="text-3xl font-semibold tracking-tight text-white">{t('studio.title')}</h1>
       </header>
 
       <div className="flex min-w-0 flex-col gap-6 xl:flex-row xl:gap-8">
@@ -115,8 +115,8 @@ export function CreatorStudioPage({ onNavigate, onSelectVideo }: CreatorStudioPa
                 type="button"
                 onClick={() => setSection(id)}
                 aria-current={isActive ? 'page' : undefined}
-                className={`flex h-10 shrink-0 items-center gap-3 rounded-lg px-3 text-left text-sm font-medium transition-colors xl:w-full ${
-                  isActive ? 'bg-neon-500/15 text-neon-300' : 'text-gray-400 hover:bg-surface-hover hover:text-white'
+                className={`flex h-11 shrink-0 items-center gap-3 rounded-xl px-3 text-left text-sm font-medium transition-colors xl:w-full ${
+                  isActive ? 'nav-item-active text-neon-200' : 'text-gray-400 hover:bg-white/[0.045] hover:text-white'
                 }`}
               >
                 <Icon className="h-4 w-4" />

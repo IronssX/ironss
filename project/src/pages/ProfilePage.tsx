@@ -25,8 +25,8 @@ export function ProfilePage({ onNavigate, onOpenChannel }: ProfilePageProps) {
   if (!user) {
     return (
       <div className="mx-auto flex min-h-[60vh] max-w-md animate-fade-in flex-col items-center justify-center gap-5 text-center">
-        <span className="flex h-16 w-16 items-center justify-center rounded-2xl bg-neon-500/15 shadow-[0_0_28px_-6px_rgba(176,38,255,0.8)]">
-          <LogIn className="h-8 w-8 text-neon-300" />
+        <span className="flex h-[72px] w-[72px] items-center justify-center rounded-[24px] border border-neon-300/15 bg-neon-300/[0.06]">
+          <LogIn className="h-7 w-7 text-neon-200" />
         </span>
         <div>
           <h1 className="text-2xl font-bold text-white">{t('profile.guest')}</h1>
@@ -38,7 +38,7 @@ export function ProfilePage({ onNavigate, onOpenChannel }: ProfilePageProps) {
           <button
             type="button"
             onClick={() => onNavigate('login')}
-            className="flex h-11 items-center justify-center gap-2 rounded-lg bg-neon-500 px-5 text-sm font-medium text-white transition-colors hover:bg-neon-400"
+            className="primary-button h-11 px-5"
           >
             <LogIn className="h-4 w-4" />
             {t('auth.loginTitle')}
@@ -46,7 +46,7 @@ export function ProfilePage({ onNavigate, onOpenChannel }: ProfilePageProps) {
           <button
             type="button"
             onClick={() => onNavigate('register')}
-            className="flex h-11 items-center justify-center gap-2 rounded-lg border border-neon-500/50 px-5 text-sm font-medium text-neon-300 transition-colors hover:bg-neon-500/10"
+            className="ghost-button h-11 px-5"
           >
             <UserPlus className="h-4 w-4" />
             {t('auth.register')}
@@ -93,7 +93,7 @@ export function ProfilePage({ onNavigate, onOpenChannel }: ProfilePageProps) {
   };
 
   return (
-    <div className="mx-auto flex w-full max-w-2xl animate-fade-in flex-col gap-6 rounded-2xl border border-surface-border bg-surface p-6 shadow-[0_0_40px_-12px_rgba(176,38,255,0.5)] sm:p-8">
+    <div className="auth-shell mx-auto flex w-full max-w-2xl animate-fade-in flex-col gap-7 rounded-[28px] border border-white/[0.08] p-6 sm:p-9">
       <div className="flex flex-col items-center gap-5 text-center sm:flex-row sm:text-left">
         <div className="relative">
           <UserAvatar name={displayName} imageUrl={avatarUrl} className="h-28 w-28 text-3xl" />

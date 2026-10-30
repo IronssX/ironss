@@ -35,13 +35,14 @@ export function ChannelHeader({
   const locale = language === 'tr' ? 'tr-TR' : 'en-US';
 
   return (
-    <section className="flex flex-col gap-6 rounded-2xl border border-surface-border bg-surface p-6 shadow-[0_0_40px_-12px_rgba(176,38,255,0.5)] sm:flex-row sm:items-start sm:p-8">
-      <UserAvatar name={username} imageUrl={avatarUrl} className="h-24 w-24 shrink-0 text-3xl sm:h-28 sm:w-28" />
+    <section className="relative flex flex-col gap-6 overflow-hidden rounded-[26px] border border-white/[0.08] bg-[radial-gradient(ellipse_at_85%_0%,rgba(162,112,205,.12),transparent_42%),#141218] p-6 sm:flex-row sm:items-start sm:p-8">
+      <div className="absolute right-8 top-8 h-24 w-24 rounded-full bg-neon-500/10 blur-3xl" aria-hidden="true" />
+      <UserAvatar name={username} imageUrl={avatarUrl} className="relative h-24 w-24 shrink-0 text-3xl sm:h-28 sm:w-28" />
 
       <div className="flex min-w-0 flex-1 flex-col gap-4">
         <div>
-          <p className="text-xs font-medium uppercase tracking-wider text-neon-300">{t('channel.title')}</p>
-          <h1 className="mt-1 truncate text-2xl font-bold text-white sm:text-3xl">{username}</h1>
+          <p className="eyebrow">{t('channel.title')}</p>
+          <h1 className="mt-2 truncate text-3xl font-semibold tracking-tight text-white sm:text-4xl">{username}</h1>
           <p className="mt-2 text-sm text-gray-400">
             <span className="font-semibold text-gray-200">{subscriberCount.toLocaleString(locale)}</span> {t('channel.subscribers')}
             <span className="mx-2 text-gray-600">&middot;</span>
@@ -76,8 +77,8 @@ export function ChannelHeader({
               aria-pressed={isSubscribed}
               className={`group inline-flex h-11 w-fit items-center gap-2 rounded-lg px-5 text-sm font-medium transition-all duration-200 active:scale-95 disabled:cursor-not-allowed disabled:opacity-60 ${
                 isSubscribed
-                  ? 'border border-surface-border text-gray-200 hover:border-red-400/60 hover:text-red-200'
-                  : 'bg-neon-500 text-white shadow-[0_0_20px_-6px_rgba(176,38,255,0.9)] hover:bg-neon-400'
+                  ? 'border border-white/10 bg-white/[0.035] text-gray-200 hover:border-red-400/40 hover:text-red-200'
+                  : 'primary-button'
               }`}
             >
               {isSubscribed && <Check className="h-4 w-4" />}

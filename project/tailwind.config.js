@@ -4,19 +4,19 @@ export default {
   theme: {
     extend: {
       colors: {
-        background: '#0a0a0f',
+        background: '#0c0c10',
         surface: {
-          DEFAULT: '#121219',
-          raised: '#1a1a24',
-          hover: '#23232f',
-          border: '#2a2a38',
+          DEFAULT: '#131218',
+          raised: '#1b1921',
+          hover: '#24212b',
+          border: '#302b37',
         },
         neon: {
-          300: '#dcb0ff',
-          400: '#c673ff',
-          500: '#b026ff',
-          600: '#9100e6',
-          700: '#6f00b3',
+          300: '#cda3f5',
+          400: '#bd86ef',
+          500: '#a76ce3',
+          600: '#8952c4',
+          700: '#673b98',
         },
       },
       keyframes: {

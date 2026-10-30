@@ -55,7 +55,6 @@ function mapVideoRow(row: VideoRow): Video {
     duration: '',
     thumbnailUrl: row.thumbnail_path ? publicUrl(row.thumbnail_path) : '',
     videoUrl: publicUrl(row.video_path),
-    source: 'uploaded',
   };
 }
 
