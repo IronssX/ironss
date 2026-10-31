@@ -295,4 +295,174 @@
       border-radius: 22px;
     }
   }
+
+  html[data-font-size='small'] {
+    font-size: 93.75%;
+  }
+
+  html[data-font-size='large'] {
+    font-size: 112.5%;
+  }
+
+  html[data-reduce-motion='true'],
+  html[data-reduce-motion='true'] *,
+  html[data-reduce-motion='true'] *::before,
+  html[data-reduce-motion='true'] *::after {
+    scroll-behavior: auto !important;
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
+
+  html[data-eye-comfort='true']::before,
+  html[data-dim-screen='true']::after {
+    position: fixed;
+    inset: 0;
+    z-index: 9999;
+    pointer-events: none;
+    content: '';
+  }
+
+  html[data-eye-comfort='true']::before {
+    background: rgba(255, 164, 83, .11);
+    mix-blend-mode: soft-light;
+  }
+
+  html[data-dim-screen='true']::after {
+    background: rgba(0, 0, 0, .12);
+  }
+
+  html[data-theme='light'] {
+    color-scheme: light;
+    background: #f5f2f8;
+  }
+
+  html[data-theme='light'] body {
+    color: #2b2632;
+    background-color: #f5f2f8;
+    background-image:
+      radial-gradient(ellipse at 75% -25%, rgba(147, 90, 202, .12), transparent 38rem),
+      linear-gradient(180deg, #faf8fc 0%, #f5f2f8 50%, #f2eff6 100%);
+  }
+
+  html[data-theme='light'] .text-white,
+  html[data-theme='light'] .text-gray-100,
+  html[data-theme='light'] .text-gray-200,
+  html[data-theme='light'] .text-gray-300,
+  html[data-theme='light'] .text-gray-400 {
+    color: #302a38;
+  }
+
+  html[data-theme='light'] .text-gray-500 {
+    color: #6d6475;
+  }
+
+  html[data-theme='light'] .text-gray-600 {
+    color: #776d80;
+  }
+
+  html[data-theme='light'] .text-neon-200,
+  html[data-theme='light'] .text-neon-300 {
+    color: #71409c;
+  }
+
+  html[data-theme='light'] [class*='border-white/'] {
+    border-color: rgba(57, 40, 73, .14);
+  }
+
+  html[data-theme='light'] [class*='bg-white/'] {
+    background-color: rgba(46, 31, 60, .045);
+  }
+
+  html[data-theme='light'] [class*='bg-[#121116]'],
+  html[data-theme='light'] [class*='bg-[#0c0c10]'],
+  html[data-theme='light'] [class*='bg-[#101014]'],
+  html[data-theme='light'] [class*='bg-[#15151b]'],
+  html[data-theme='light'] [class*='bg-[#19191f]'],
+  html[data-theme='light'] [class*='bg-[#17141e]'],
+  html[data-theme='light'] [class*='bg-[#24212d]'],
+  html[data-theme='light'] [class*='bg-[#24212b]'],
+  html[data-theme='light'] [class~='bg-surface'],
+  html[data-theme='light'] [class~='bg-surface-raised'],
+  html[data-theme='light'] [class~='bg-surface-hover'] {
+    background-color: #fff;
+  }
+
+  html[data-theme='light'] .home-hero,
+  html[data-theme='light'] .auth-shell,
+  html[data-theme='light'] .empty-state,
+  html[data-theme='light'] main > section.bg-gradient-to-br {
+    background: linear-gradient(125deg, #fff 0%, #f2ebf8 100%);
+  }
+
+  html[data-theme='light'] [class*='bg-gradient-to-br'][class~='text-white'] {
+    color: #fff;
+  }
+
+  html[data-theme='light'] .home-hero .hero-orbit {
+    border-color: rgba(113, 64, 156, .15);
+  }
+
+  html[data-theme='light'] .brand-mark {
+    color: #71409c;
+    background: linear-gradient(145deg, #f3e8ff, #e4d5f3);
+    border-color: rgba(113, 64, 156, .2);
+  }
+
+  html[data-theme='light'] .primary-button {
+    color: #24152f;
+  }
+
+  html[data-theme='light'] .shorts-stage,
+  html[data-theme='light'] .shorts-stage .text-white,
+  html[data-theme='light'] .group.bg-black .text-white {
+    color: #fff;
+  }
+
+  html[data-theme='light'] .shorts-stage .text-gray-100,
+  html[data-theme='light'] .group.bg-black .text-gray-100 {
+    color: #f3f4f6;
+  }
+
+  html[data-theme='light'] .shorts-stage .text-gray-200,
+  html[data-theme='light'] .group.bg-black .text-gray-200 {
+    color: #e5e7eb;
+  }
+
+  html[data-theme='light'] .shorts-stage .text-gray-300,
+  html[data-theme='light'] .group.bg-black .text-gray-300 {
+    color: #d1d5db;
+  }
+
+  html[data-theme='light'] .shorts-stage .text-gray-400,
+  html[data-theme='light'] .group.bg-black .text-gray-400 {
+    color: #9ca3af;
+  }
+
+  html[data-theme='light'] .shorts-stage .text-gray-500,
+  html[data-theme='light'] .group.bg-black .text-gray-500 {
+    color: #6b7280;
+  }
+
+  html[data-theme='light'] .policy-copy strong {
+    color: #40354c;
+  }
+
+  html[data-theme='light'] .policy-copy a {
+    color: #71409c;
+  }
+
+  html[data-theme='light'] .shorts-ambient {
+    background:
+      radial-gradient(ellipse at 50% 42%, rgba(92, 48, 119, .2), transparent 35rem),
+      linear-gradient(120deg, #09080d, #100d14 50%, #09080d);
+  }
+
+  html[data-theme='light'] .mobile-dock {
+    background-color: rgba(255, 255, 255, .96);
+  }
+
+  html[data-theme='light'] .settings-category-list {
+    scrollbar-color: #b7a5c7 transparent;
+  }
 }

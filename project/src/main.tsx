@@ -3,6 +3,7 @@ import { createRoot } from 'react-dom/client';
 import App from './App.tsx';
 import { PrivacyPolicyPage } from '@/pages/PrivacyPolicyPage';
 import { TermsPage } from '@/pages/TermsPage';
+import { SettingsProvider } from '@/context/SettingsProvider';
 import { AuthProvider } from '@/context/AuthProvider';
 import { LanguageProvider } from '@/context/LanguageProvider';
 import './index.css';
@@ -19,16 +20,18 @@ if (isPrivacyPolicyPage) {
 
 createRoot(document.getElementById('root')!).render(
   <StrictMode>
-    {isPrivacyPolicyPage ? (
-      <PrivacyPolicyPage />
-    ) : isTermsPage ? (
-      <TermsPage />
-    ) : (
-      <LanguageProvider>
-        <AuthProvider>
-          <App />
-        </AuthProvider>
-      </LanguageProvider>
-    )}
+    <SettingsProvider>
+      {isPrivacyPolicyPage ? (
+        <PrivacyPolicyPage />
+      ) : isTermsPage ? (
+        <TermsPage />
+      ) : (
+        <LanguageProvider>
+          <AuthProvider>
+            <App />
+          </AuthProvider>
+        </LanguageProvider>
+      )}
+    </SettingsProvider>
   </StrictMode>
 );

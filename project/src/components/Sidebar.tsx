@@ -6,6 +6,7 @@ import {
   Library,
   PanelsTopLeft,
   Plus,
+  Settings,
   type LucideIcon,
   UserRound,
   Users,
@@ -33,6 +34,7 @@ const NAV_ITEMS: { page: Page; label: TranslationKey; icon: LucideIcon }[] = [
   { page: 'library', label: 'sidebar.library', icon: Library },
   { page: 'notifications', label: 'topbar.notifications', icon: Bell },
   { page: 'studio', label: 'studio.title', icon: PanelsTopLeft },
+  { page: 'settings', label: 'sidebar.settings', icon: Settings },
 ];
 
 export function Sidebar({ activePage, isOpen, onNavigate, onClose }: SidebarProps) {

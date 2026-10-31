@@ -14,6 +14,7 @@ import { UploadPage } from '@/pages/UploadPage';
 import { WatchPage } from '@/pages/WatchPage';
 import { CreatorStudioPage } from '@/pages/CreatorStudioPage';
 import { ShortsPage } from '@/pages/ShortsPage';
+import { SettingsPage } from '@/pages/SettingsPage';
 import type { Page } from '@/types/navigation';
 import type { CategoryFilter } from '@/types/video';
 import { useLanguage } from '@/hooks/useLanguage';
@@ -176,6 +177,8 @@ function App() {
         );
       case 'studio':
         return <CreatorStudioPage onNavigate={navigate} onSelectVideo={openVideo} />;
+      case 'settings':
+        return <SettingsPage onNavigate={navigate} />;
       case 'channel':
         if (!selectedChannelId) {
           return (

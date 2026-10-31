@@ -24,6 +24,7 @@ import { useShortVideoLikes } from '@/hooks/useShortVideoLikes';
 import type { Page } from '@/types/navigation';
 import type { Video } from '@/types/video';
 import { formatExactCount } from '@/utils/format';
+import { useSettings } from '@/hooks/useSettings';
 
 interface ShortsPageProps {
   videos: Video[];
@@ -35,8 +36,9 @@ interface ShortsPageProps {
 export function ShortsPage({ videos, schemaMissing, onNavigate, onOpenChannel }: ShortsPageProps) {
   const { language, t } = useLanguage();
   const { user } = useAuth();
+  const { shortsStartMuted } = useSettings();
   const [activeIndex, setActiveIndex] = useState(0);
-  const [isMuted, setIsMuted] = useState(true);
+  const [isMuted, setIsMuted] = useState(shortsStartMuted);
   const [isPlaying, setIsPlaying] = useState(true);
   const [showComments, setShowComments] = useState(false);
   const [shareMessage, setShareMessage] = useState('');

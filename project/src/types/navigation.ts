@@ -12,4 +12,5 @@ export type Page =
   | 'upload'
   | 'shorts-upload'
   | 'channel'
-  | 'studio';
+  | 'studio'
+  | 'settings';
