@@ -1,5 +1,5 @@
 import { Maximize, Minimize, Pause, Play, Volume2, VolumeX } from 'lucide-react';
-import type { ChangeEvent } from 'react';
+import type { ChangeEvent, CSSProperties } from 'react';
 import { formatPlaybackTime } from '@/utils/format';
 import { useLanguage } from '@/hooks/useLanguage';
 
@@ -74,7 +74,7 @@ export function PlayerControls({
         {formatPlaybackTime(currentTime)} / {formatPlaybackTime(duration)}
       </span>
 
-      <div className="flex shrink-0 items-center gap-1">
+      <div className="flex shrink-0 items-center gap-1.5 rounded-xl border border-white/[0.06] bg-white/[0.025] px-1 sm:gap-2 sm:px-2">
         <button type="button" onClick={onToggleMute} aria-label={isSilent ? t('player.unmute') : t('player.mute')} className={iconButtonClass}>
           <VolumeIcon className="h-4 w-4" />
         </button>
@@ -86,8 +86,11 @@ export function PlayerControls({
           value={isMuted ? 0 : volume}
           onChange={(event: ChangeEvent<HTMLInputElement>) => onVolumeChange(Number(event.target.value))}
           aria-label={t('player.volume')}
-          className="hidden w-20 cursor-pointer accent-neon-500 sm:block"
+          aria-valuetext={`${Math.round(volume * 100)}%`}
+          style={{ '--volume-level': `${isMuted ? 0 : volume * 100}%` } as CSSProperties}
+          className="volume-range w-9 cursor-pointer sm:w-16"
         />
+        <span className="hidden w-8 text-right text-[10px] tabular-nums text-gray-500 sm:inline">{Math.round((isMuted ? 0 : volume) * 100)}%</span>
       </div>
 
       {canFullscreen && (

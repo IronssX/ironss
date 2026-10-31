@@ -96,7 +96,7 @@ export function TopBar({ query, onQueryChange, onToggleSidebar, onGoHome, onNavi
             <>
               <button
                 type="button"
-                onClick={() => onNavigate('upload')}
+                onClick={() => onNavigate('upload-choice')}
                 aria-label={t('topbar.upload')}
                 className="secondary-button h-10 px-3 md:px-4"
               >

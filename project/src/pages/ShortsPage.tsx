@@ -14,6 +14,7 @@ import {
   X,
 } from 'lucide-react';
 import { useCallback, useEffect, useRef, useState, type TouchEvent } from 'react';
+import type { CSSProperties } from 'react';
 import { ShortVideoCommentsSection } from '@/components/ShortVideoCommentsSection';
 import { UserAvatar } from '@/components/UserAvatar';
 import { useAuth } from '@/hooks/useAuth';
@@ -39,6 +40,7 @@ export function ShortsPage({ videos, schemaMissing, onNavigate, onOpenChannel }:
   const { shortsStartMuted } = useSettings();
   const [activeIndex, setActiveIndex] = useState(0);
   const [isMuted, setIsMuted] = useState(shortsStartMuted);
+  const [volume, setVolume] = useState(1);
   const [isPlaying, setIsPlaying] = useState(true);
   const [showComments, setShowComments] = useState(false);
   const [isCommentsMounted, setIsCommentsMounted] = useState(false);
@@ -159,6 +161,7 @@ export function ShortsPage({ videos, schemaMissing, onNavigate, onOpenChannel }:
     const player = videoRef.current;
     if (!player) return;
     player.muted = isMuted;
+    player.volume = volume;
     if (isPlaying) {
       player.play().then(() => setPlaybackError(false)).catch(() => {
         setIsPlaying(false);
@@ -167,7 +170,17 @@ export function ShortsPage({ videos, schemaMissing, onNavigate, onOpenChannel }:
     } else {
       player.pause();
     }
-  }, [activeIndex, isMuted, isPlaying]);
+  }, [activeIndex, isMuted, isPlaying, volume]);
+
+  const handleVolumeChange = (nextVolume: number) => {
+    setVolume(nextVolume);
+    setIsMuted(nextVolume === 0);
+  };
+
+  const toggleMute = () => {
+    if (isMuted && volume === 0) setVolume(1);
+    setIsMuted((muted) => !muted);
+  };
 
   useEffect(() => {
     const handleWheel = (event: WheelEvent) => {
@@ -320,10 +333,27 @@ export function ShortsPage({ videos, schemaMissing, onNavigate, onOpenChannel }:
             {isPlaying ? <Pause className="h-7 w-7" /> : <Play className="ml-1 h-7 w-7 fill-current" />}
           </button>
 
-          <div className="absolute bottom-5 right-3 z-10 flex flex-col items-center gap-4 sm:bottom-7 sm:right-4">
-            <button type="button" onClick={() => setIsMuted((muted) => !muted)} aria-label={isMuted ? t('shorts.unmute') : t('shorts.mute')} className="shorts-control-button mb-1">
-              {isMuted ? <VolumeX className="h-5 w-5" /> : <Volume2 className="h-5 w-5" />}
-            </button>
+          <div className="absolute bottom-5 right-3 z-10 flex flex-col items-center gap-3 sm:bottom-7 sm:right-4 sm:gap-4">
+            <div className="flex flex-col items-center gap-1.5">
+              <button type="button" onClick={toggleMute} aria-label={isMuted ? t('shorts.unmute') : t('shorts.mute')} className="shorts-control-button transition-transform duration-200 hover:scale-110 active:scale-95">
+                {isMuted ? <VolumeX className="h-5 w-5" /> : <Volume2 className="h-5 w-5" />}
+              </button>
+              <span className="relative h-16 w-6">
+                <input
+                  type="range"
+                  min={0}
+                  max={1}
+                  step={0.05}
+                  value={isMuted ? 0 : volume}
+                  onChange={(event) => handleVolumeChange(Number(event.target.value))}
+                  aria-label={t('player.volume')}
+                  aria-valuetext={`${Math.round((isMuted ? 0 : volume) * 100)}%`}
+                  style={{ '--volume-level': `${isMuted ? 0 : volume * 100}%` } as CSSProperties}
+                  className="clips-volume-range absolute left-1/2 top-1/2 w-16 -translate-x-1/2 -translate-y-1/2 -rotate-90"
+                />
+              </span>
+              <span className="text-[9px] tabular-nums text-white/65">{Math.round((isMuted ? 0 : volume) * 100)}%</span>
+            </div>
             <button
               type="button"
               onClick={() => void handleLike()}

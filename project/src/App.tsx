@@ -15,6 +15,7 @@ import { WatchPage } from '@/pages/WatchPage';
 import { CreatorStudioPage } from '@/pages/CreatorStudioPage';
 import { ShortsPage } from '@/pages/ShortsPage';
 import { SettingsPage } from '@/pages/SettingsPage';
+import { UploadChoicePage } from '@/pages/UploadChoicePage';
 import type { Page } from '@/types/navigation';
 import type { CategoryFilter } from '@/types/video';
 import { useLanguage } from '@/hooks/useLanguage';
@@ -166,6 +167,8 @@ function App() {
         );
       case 'upload':
         return <UploadPage onNavigate={navigate} onUploaded={refreshUploads} videoType="standard" />;
+      case 'upload-choice':
+        return <UploadChoicePage onNavigate={navigate} />;
       case 'shorts-upload':
         return (
           <UploadPage

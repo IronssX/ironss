@@ -99,7 +99,7 @@ export function Sidebar({ activePage, isOpen, onNavigate, onClose }: SidebarProp
         </nav>
 
         {user ? (
-          <button type="button" onClick={() => navigate('upload')} className="primary-button mt-8 hidden md:flex">
+          <button type="button" onClick={() => navigate('upload-choice')} className="primary-button mt-8 hidden md:flex">
             <Plus className="h-4 w-4" />
             {t('topbar.upload')}
           </button>
@@ -168,7 +168,7 @@ export function Sidebar({ activePage, isOpen, onNavigate, onClose }: SidebarProp
             {user ? t('topbar.account') : t('topbar.signIn')}
           </button>
           {user && (
-            <button type="button" onClick={() => navigate('upload')} className="flex w-full items-center gap-3 rounded-xl px-3 py-3 text-left text-sm text-gray-300 hover:bg-white/[0.06] hover:text-white">
+            <button type="button" onClick={() => navigate('upload-choice')} className="flex w-full items-center gap-3 rounded-xl px-3 py-3 text-left text-sm text-gray-300 hover:bg-white/[0.06] hover:text-white">
               <Plus className="h-4 w-4 text-neon-300" />
               {t('topbar.upload')}
             </button>

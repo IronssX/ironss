@@ -62,7 +62,7 @@ export function FeedPage({
                   {t('feed.exploreAction')}
                   <ArrowRight className="h-4 w-4" />
                 </button>
-                <button type="button" onClick={() => onNavigate(user ? 'upload' : 'login')} className="ghost-button h-11 px-4">
+                <button type="button" onClick={() => onNavigate(user ? 'upload-choice' : 'login')} className="ghost-button h-11 px-4">
                   {user ? t('topbar.upload') : t('topbar.signIn')}
                   <ArrowDownRight className="h-4 w-4" />
                 </button>

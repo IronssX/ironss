@@ -9,6 +9,7 @@ export type Page =
   | 'login'
   | 'register'
   | 'profile'
+  | 'upload-choice'
   | 'upload'
   | 'shorts-upload'
   | 'channel'

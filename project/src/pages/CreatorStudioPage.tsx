@@ -142,7 +142,7 @@ export function CreatorStudioPage({ onNavigate, onSelectVideo }: CreatorStudioPa
               t={t}
               onSelectVideo={onSelectVideo}
               onShowAll={() => setSection('content')}
-              onUpload={() => onNavigate('upload')}
+              onUpload={() => onNavigate('upload-choice')}
             />
           )}
           {section === 'content' && (
@@ -151,7 +151,7 @@ export function CreatorStudioPage({ onNavigate, onSelectVideo }: CreatorStudioPa
               language={language}
               t={t}
               onSelectVideo={onSelectVideo}
-              onUpload={() => onNavigate('upload')}
+              onUpload={() => onNavigate('upload-choice')}
             />
           )}
           {section === 'analytics' && (
