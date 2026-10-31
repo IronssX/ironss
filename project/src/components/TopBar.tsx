@@ -11,9 +11,10 @@ interface TopBarProps {
   onToggleSidebar: () => void;
   onGoHome: () => void;
   onNavigate: (page: Page) => void;
+  unreadCount: number;
 }
 
-export function TopBar({ query, onQueryChange, onToggleSidebar, onGoHome, onNavigate }: TopBarProps) {
+export function TopBar({ query, onQueryChange, onToggleSidebar, onGoHome, onNavigate, unreadCount }: TopBarProps) {
   const { user, profile, avatarUrl, isLoading } = useAuth();
   const { language, setLanguage, t } = useLanguage();
 
@@ -64,11 +65,16 @@ export function TopBar({ query, onQueryChange, onToggleSidebar, onGoHome, onNavi
           <button
             type="button"
             onClick={() => onNavigate('notifications')}
-            aria-label={t('topbar.notifications')}
+            aria-label={t('topbar.notificationsWithCount', { count: unreadCount })}
             title={t('topbar.notifications')}
-            className="icon-button hidden sm:inline-flex"
+            className="icon-button relative inline-flex"
           >
             <Bell className="h-[18px] w-[18px]" strokeWidth={1.8} />
+            {unreadCount > 0 && (
+              <span aria-hidden="true" className="notification-badge absolute -right-1 -top-1 flex min-h-[18px] min-w-[18px] items-center justify-center rounded-full border-2 border-[#0c0c10] bg-neon-400 px-1 text-[9px] font-bold leading-none text-[#160e1d]">
+                {unreadCount > 99 ? '99+' : unreadCount}
+              </span>
+            )}
           </button>
           <div role="group" aria-label={t('language.select')} className="hidden items-center rounded-xl border border-white/[0.08] bg-white/[0.025] p-1 sm:flex">
             <button

@@ -1,4 +1,4 @@
-import { BellRing, Library, Users } from 'lucide-react';
+import { Library, Users } from 'lucide-react';
 import { useMemo, useState } from 'react';
 import { Sidebar } from '@/components/Sidebar';
 import { TopBar } from '@/components/TopBar';
@@ -16,12 +16,17 @@ import { CreatorStudioPage } from '@/pages/CreatorStudioPage';
 import { ShortsPage } from '@/pages/ShortsPage';
 import { SettingsPage } from '@/pages/SettingsPage';
 import { UploadChoicePage } from '@/pages/UploadChoicePage';
+import { NotificationsPage } from '@/pages/NotificationsPage';
 import type { Page } from '@/types/navigation';
 import type { CategoryFilter } from '@/types/video';
 import { useLanguage } from '@/hooks/useLanguage';
+import { useAuth } from '@/hooks/useAuth';
+import { useNotifications } from '@/hooks/useNotifications';
 
 function App() {
   const { t } = useLanguage();
+  const { user } = useAuth();
+  const notificationState = useNotifications(user?.id ?? null);
   const [page, setPage] = useState<Page>(() => (new URLSearchParams(window.location.search).has('video') ? 'watch' : 'home'));
   const [selectedVideoId, setSelectedVideoId] = useState<string | null>(() => new URLSearchParams(window.location.search).get('video'));
   const [selectedChannelId, setSelectedChannelId] = useState<string | null>(null);
@@ -165,12 +170,19 @@ function App() {
         return <LibraryPage videos={allVideos} onSelectVideo={openVideo} onOpenChannel={openChannel} />;
       case 'notifications':
         return (
-          <PlaceholderPage
-            icon={BellRing}
-            title={t('placeholder.notificationsTitle')}
-            message={t('placeholder.notificationsMessage')}
-            actionLabel={t('placeholder.backHome')}
-            onAction={() => navigate('home')}
+          <NotificationsPage
+            notifications={notificationState.notifications}
+            unreadCount={notificationState.unreadCount}
+            isLoading={notificationState.isLoading}
+            error={notificationState.error}
+            actionError={notificationState.actionError}
+            isSignedIn={Boolean(user)}
+            onRefresh={() => void notificationState.refresh()}
+            onMarkRead={notificationState.markRead}
+            onMarkAllRead={notificationState.markAllRead}
+            onOpenVideo={openVideo}
+            onOpenChannel={openChannel}
+            onSignIn={() => navigate('login')}
           />
         );
       case 'upload':
@@ -245,6 +257,7 @@ function App() {
         onToggleSidebar={() => setIsSidebarOpen((open) => !open)}
         onGoHome={() => navigate('home')}
         onNavigate={navigate}
+        unreadCount={notificationState.unreadCount}
       />
 
       <div className="flex pt-[76px]">

@@ -489,6 +489,11 @@
     100% { transform: scale(1); box-shadow: 0 0 0 0 rgba(176, 38, 255, 0); }
   }
 
+  @keyframes notification-arrive {
+    0% { opacity: 0; transform: translateY(8px) scale(.99); }
+    100% { opacity: 1; transform: translateY(0) scale(1); }
+  }
+
   .animate-heart-pop {
     animation: like-heart-pop 420ms cubic-bezier(.2, .8, .25, 1);
     will-change: transform;
@@ -500,6 +505,14 @@
 
   .animate-connection-pulse {
     animation: connection-pulse 440ms ease-out;
+  }
+
+  .notification-card {
+    animation: notification-arrive 260ms ease-out both;
+  }
+
+  .notification-badge {
+    animation: notification-arrive 220ms ease-out both;
   }
 
   .like-particle-burst {
@@ -549,6 +562,8 @@
     .animate-heart-pop,
     .animate-like-count,
     .animate-connection-pulse,
+    .notification-card,
+    .notification-badge,
     .like-particle-burst > span {
       animation: none !important;
     }
@@ -562,6 +577,8 @@
   html[data-reduce-motion='true'] .animate-heart-pop,
   html[data-reduce-motion='true'] .animate-like-count,
   html[data-reduce-motion='true'] .animate-connection-pulse,
+  html[data-reduce-motion='true'] .notification-card,
+  html[data-reduce-motion='true'] .notification-badge,
   html[data-reduce-motion='true'] .like-particle-burst > span {
     animation: none !important;
   }

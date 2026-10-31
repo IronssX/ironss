@@ -6,4 +6,6 @@ export interface VideoComment {
   author: string;
   body: string;
   createdAt: string;
+  userId?: string;
+  avatarUrl?: string | null;
 }

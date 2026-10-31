@@ -251,7 +251,7 @@ export function SettingsPage({ onNavigate }: SettingsPageProps) {
 
           {activeCategory === 'notifications' && (
             <div className="pt-5">
-              <Notice>{text('IRONSS bildirimleri şu anda etkin değil. Bildirim akışı ve bildirim tercihlerini kaydeden bir sistem bulunmadığından burada açma-kapama seçeneği sunulmuyor.', 'IRONSS notifications are not currently active. There is no notification feed or preference storage, so notification toggles are not shown here.')}</Notice>
+              <Notice>{text('Kanal bağlantıları, yeni videolar ve yorumlar için uygulama içi bildirimler hesabınıza kaydedilir. Açık oturum varken bildirim merkezi yeni etkinlikleri anında günceller.', 'In-app notifications for channel connections, new videos, and comments are saved to your account. The notification center updates activity in real time while you are signed in.')}</Notice>
               <button type="button" onClick={() => onNavigate('notifications')} className="secondary-button mt-4 h-10 px-4 text-xs">
                 {text('Bildirim merkezini görüntüle', 'View notification center')}
               </button>

@@ -6,6 +6,7 @@ import { useVideoComments } from '@/hooks/useVideoComments';
 import { MAX_COMMENT_LENGTH } from '@/types/comment';
 import { formatExactCount, formatTimeAgo } from '@/utils/format';
 import { useLanguage } from '@/hooks/useLanguage';
+import { UserAvatar } from '@/components/UserAvatar';
 
 interface CommentsSectionProps {
   videoId: string;
@@ -13,18 +14,17 @@ interface CommentsSectionProps {
 
 export function CommentsSection({ videoId }: CommentsSectionProps) {
   const { language, t } = useLanguage();
-  const { profile } = useAuth();
-  const { comments, addComment, saveFailed } = useVideoComments(videoId);
+  const { profile, avatarUrl } = useAuth();
+  const { comments, addComment, saveFailed, hasError, isSignedIn } = useVideoComments(videoId);
   const authorName = profile?.username ?? t('profile.guest');
   const [draft, setDraft] = useState('');
   const trimmedDraft = draft.trim();
   const canSubmit = trimmedDraft.length > 0;
 
-  const handleSubmit = (event: FormEvent<HTMLFormElement>) => {
+  const handleSubmit = async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
     if (!canSubmit) return;
-    addComment(trimmedDraft, authorName);
-    setDraft('');
+    if (await addComment(trimmedDraft, authorName)) setDraft('');
   };
 
   return (
@@ -42,12 +42,7 @@ export function CommentsSection({ videoId }: CommentsSectionProps) {
       </div>
 
       <form onSubmit={handleSubmit} className="flex items-start gap-3">
-        <span
-          aria-hidden="true"
-          className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-gradient-to-br from-neon-500 to-neon-700 text-sm font-bold text-white"
-        >
-          {authorName.charAt(0).toUpperCase()}
-        </span>
+        <UserAvatar name={authorName} imageUrl={avatarUrl} className="h-10 w-10" />
         <div className="flex min-w-0 flex-1 flex-col gap-2">
           <label htmlFor="comment-input" className="sr-only">
             {t('comments.write')}
@@ -82,17 +77,20 @@ export function CommentsSection({ videoId }: CommentsSectionProps) {
           {t('comments.saveFailed')}
         </p>
       )}
+      {hasError && (
+        <p role="alert" className="rounded-lg border border-red-500/40 bg-red-500/10 px-4 py-3 text-sm text-red-200">
+          {t('comments.fetchFailed')}
+        </p>
+      )}
+      {!isSignedIn && (
+        <p className="text-xs leading-relaxed text-gray-500">{t('comments.guestLocalOnly')}</p>
+      )}
 
       {comments.length > 0 ? (
         <ul className="flex flex-col gap-4">
           {comments.map((comment) => (
             <li key={comment.id} className="flex animate-fade-in gap-3 rounded-xl border border-white/[0.045] bg-white/[0.015] p-3 sm:p-4">
-              <span
-                aria-hidden="true"
-                className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-surface-raised text-sm font-bold text-neon-300"
-              >
-                {comment.author.charAt(0)}
-              </span>
+              <UserAvatar name={comment.author} imageUrl={comment.avatarUrl ?? null} className="h-10 w-10" />
               <div className="min-w-0 flex-1">
                 <p className="flex flex-wrap items-baseline gap-x-2 text-sm">
                   <span className="font-bold text-gray-100">{comment.author}</span>

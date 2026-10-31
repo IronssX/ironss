@@ -34,7 +34,7 @@ const sections = [
           <li><strong>Hesap bilgileri:</strong> Kullanıcı adı, e-posta adresi ve hesap kimliği.</li>
           <li><strong>Profil bilgileri:</strong> Profil fotoğrafı ve hesap oluşturma/güncelleme zamanları.</li>
           <li><strong>Video bilgileri:</strong> Video başlığı, açıklaması, dosya konumu, dosya boyutu, dosya türü ve yüklenme zamanı.</li>
-          <li><strong>Etkileşim bilgileri:</strong> Clips beğenileri, yorumları ve kanal bağlantıları. Uzun videolardaki beğeni, yorum, beğenmeme ve kaydetme tercihleri yalnızca kullandığınız tarayıcıda saklanır.</li>
+          <li><strong>Etkileşim bilgileri:</strong> Clips beğenileri ve yorumları, standart video yorumları, kanal bağlantıları ve bu etkinliklere ilişkin bildirimler. Uzun videolardaki beğeni, beğenmeme ve kaydetme tercihleri yalnızca kullandığınız tarayıcıda saklanır; misafir yorumları da yalnızca bu tarayıcıda tutulur.</li>
           <li><strong>İzlenme bilgileri:</strong> İzlenen video, izlenme zamanı ve giriş yapmış kullanıcılar için kullanıcı kimliği.</li>
         </ul>
         <p>
@@ -53,6 +53,7 @@ const sections = [
           <li>Kullanıcı hesaplarının oluşturulması ve yönetilmesi.</li>
           <li>Video yükleme ve görüntüleme özelliklerinin çalıştırılması.</li>
           <li>Beğeni, yorum ve kanal bağlantısı işlemlerinin gerçekleştirilmesi.</li>
+          <li>Kanal bağlantıları, yeni videolar ve yorumlar hakkında uygulama içi bildirimlerin iletilmesi.</li>
           <li>Video izlenme sayılarının hesaplanması.</li>
           <li>Platform güvenliğinin ve işleyişinin desteklenmesi.</li>
         </ul>
@@ -65,7 +66,7 @@ const sections = [
       <>
         <p>
           IRONSS&apos;un mevcut teknik altyapısında Supabase kullanılmaktadır.
-          Hesap, profil, video ve etkileşim verileri ilgili Supabase
+          Hesap, profil, video, standart video yorumları, Clips etkileşimleri ve bildirim verileri ilgili Supabase
           hizmetlerinde saklanabilir.
         </p>
         <p>Platform Cloudflare Pages üzerinden yayınlanmaktadır.</p>
