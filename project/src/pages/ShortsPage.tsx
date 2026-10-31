@@ -14,16 +14,16 @@ import {
   X,
 } from 'lucide-react';
 import { useCallback, useEffect, useRef, useState, type TouchEvent } from 'react';
-import { CommentsSection } from '@/components/CommentsSection';
+import { ShortVideoCommentsSection } from '@/components/ShortVideoCommentsSection';
 import { UserAvatar } from '@/components/UserAvatar';
 import { useAuth } from '@/hooks/useAuth';
 import { useChannel } from '@/hooks/useChannel';
 import { useLanguage } from '@/hooks/useLanguage';
-import { useVideoLike } from '@/hooks/useVideoLike';
+import { useShortVideoComments } from '@/hooks/useShortVideoComments';
+import { useShortVideoLikes } from '@/hooks/useShortVideoLikes';
 import type { Page } from '@/types/navigation';
 import type { Video } from '@/types/video';
 import { formatExactCount } from '@/utils/format';
-import { useVideoComments } from '@/hooks/useVideoComments';
 
 interface ShortsPageProps {
   videos: Video[];
@@ -45,8 +45,15 @@ export function ShortsPage({ videos, schemaMissing, onNavigate, onOpenChannel }:
   const lastNavigationRef = useRef(0);
   const touchStartRef = useRef<number | null>(null);
   const activeVideo = videos[activeIndex];
-  const { isLiked, toggleLike } = useVideoLike(activeVideo?.id ?? '');
-  const { comments } = useVideoComments(activeVideo?.id ?? '');
+  const {
+    likeCount,
+    isLiked,
+    isLoading: isLikeLoading,
+    isBusy: isLikeBusy,
+    hasError: likeError,
+    toggleLike,
+  } = useShortVideoLikes(activeVideo?.id ?? '');
+  const shortComments = useShortVideoComments(activeVideo?.id ?? '');
   const {
     channel,
     avatarUrl,
@@ -236,13 +243,20 @@ export function ShortsPage({ videos, schemaMissing, onNavigate, onOpenChannel }:
             <button type="button" onClick={() => setIsMuted((muted) => !muted)} aria-label={isMuted ? t('shorts.unmute') : t('shorts.mute')} className="shorts-control-button mb-1">
               {isMuted ? <VolumeX className="h-5 w-5" /> : <Volume2 className="h-5 w-5" />}
             </button>
-            <button type="button" onClick={toggleLike} aria-pressed={isLiked} aria-label={t('like.like')} className="shorts-control-button">
+            <button
+              type="button"
+              onClick={() => user ? void toggleLike() : onNavigate('login')}
+              disabled={isLikeLoading || isLikeBusy}
+              aria-pressed={isLiked}
+              aria-label={t(isLiked ? 'like.liked' : 'like.like')}
+              className="shorts-control-button disabled:opacity-50"
+            >
               <Heart className={`h-6 w-6 ${isLiked ? 'fill-neon-200 text-neon-200' : ''}`} />
-              <span>{formatExactCount(activeVideo.likes + (isLiked ? 1 : 0), language)}</span>
+              <span>{formatExactCount(likeCount, language)}</span>
             </button>
             <button type="button" onClick={() => setShowComments((shown) => !shown)} aria-expanded={showComments} aria-label={t('shorts.comments')} className="shorts-control-button">
               <MessageCircle className="h-6 w-6" />
-              <span>{formatExactCount(comments.length, language)}</span>
+              <span>{formatExactCount(shortComments.commentCount, language)}</span>
             </button>
             <button type="button" onClick={() => void handleShare()} aria-label={t('shorts.share')} className="shorts-control-button">
               <Share2 className="h-5 w-5" />
@@ -260,6 +274,7 @@ export function ShortsPage({ videos, schemaMissing, onNavigate, onOpenChannel }:
             </button>
             {channelError && <p role="alert" className="absolute bottom-0 right-14 w-48 rounded-lg bg-black/80 p-2 text-right text-[10px] text-red-200">{channelError}</p>}
             {subscriptionError && <p role="alert" className="absolute bottom-0 right-14 w-48 rounded-lg bg-black/80 p-2 text-right text-[10px] text-red-200">{subscriptionError}</p>}
+            {likeError && <p role="alert" className="absolute bottom-0 right-14 w-48 rounded-lg bg-black/80 p-2 text-right text-[10px] text-red-200">{t('shorts.likeActionFailed')}</p>}
           </div>
 
           {shareMessage && <p role="status" className="absolute right-3 top-14 z-20 rounded-lg bg-black/70 px-3 py-2 text-[11px] text-white">{shareMessage}</p>}
@@ -282,7 +297,17 @@ export function ShortsPage({ videos, schemaMissing, onNavigate, onOpenChannel }:
             <h2 className="text-sm font-semibold text-white">{t('shorts.comments')}</h2>
             <button type="button" onClick={() => setShowComments(false)} aria-label={t('shorts.closeComments')} className="icon-button h-8 w-8"><X className="h-4 w-4" /></button>
           </div>
-          <CommentsSection key={activeVideo.id} videoId={activeVideo.id} />
+          <ShortVideoCommentsSection
+            key={activeVideo.id}
+            onNavigate={onNavigate}
+            comments={shortComments.comments}
+            commentCount={shortComments.commentCount}
+            isLoading={shortComments.isLoading}
+            isBusy={shortComments.isBusy}
+            hasError={shortComments.hasError}
+            addComment={shortComments.addComment}
+            removeComment={shortComments.removeComment}
+          />
         </div>
       )}
     </main>
