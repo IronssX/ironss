@@ -1,5 +1,5 @@
 import { requireSupabase } from '@/lib/supabase';
-import type { Profile } from '@/types/profile';
+import type { CoverTheme, Profile } from '@/types/profile';
 import { translate, type Language } from '@/i18n';
 
 const AVATAR_BUCKET = 'avatars';
@@ -9,12 +9,15 @@ const AVATAR_EXTENSIONS = new Map([
   ['image/png', 'png'],
   ['image/webp', 'webp'],
 ]);
+const USERNAME_PATTERN = /^[A-Za-z0-9_]{3,20}$/;
 
 interface ProfileRow {
   id: string;
   username: string;
   avatar_path: string | null;
   channel_description: string | null;
+  cover_image_path: string | null;
+  cover_theme: CoverTheme;
 }
 
 function isProfileRow(value: unknown): value is ProfileRow {
@@ -24,14 +27,19 @@ function isProfileRow(value: unknown): value is ProfileRow {
     typeof row.id === 'string' &&
     typeof row.username === 'string' &&
     (row.avatar_path === null || typeof row.avatar_path === 'string') &&
-    (row.channel_description === null || typeof row.channel_description === 'string')
+    (row.channel_description === null || typeof row.channel_description === 'string') &&
+    (row.cover_image_path === null || typeof row.cover_image_path === 'string') &&
+    (row.cover_theme === 'purple-neon' ||
+      row.cover_theme === 'black' ||
+      row.cover_theme === 'minimal' ||
+      row.cover_theme === 'gaming')
   );
 }
 
 export async function fetchProfile(userId: string): Promise<Profile | null> {
   const { data, error } = await requireSupabase()
     .from('profiles')
-    .select('id, username, avatar_path, channel_description')
+    .select('id, username, avatar_path, channel_description, cover_image_path, cover_theme')
     .eq('id', userId)
     .maybeSingle();
 
@@ -44,6 +52,8 @@ export async function fetchProfile(userId: string): Promise<Profile | null> {
     username: data.username,
     avatarPath: data.avatar_path,
     channelDescription: data.channel_description,
+    coverImagePath: data.cover_image_path,
+    coverTheme: data.cover_theme,
   };
 }
 
@@ -83,4 +93,76 @@ export async function uploadAvatar(userId: string, file: File, previousPath: str
   }
 
   return path;
+}
+
+export async function uploadProfileCover(userId: string, file: File): Promise<string> {
+  const extension = AVATAR_EXTENSIONS.get(file.type);
+  if (!extension) throw new Error('Unsupported cover image type.');
+  if (file.size > MAX_AVATAR_BYTES) throw new Error('Cover image exceeds the maximum size.');
+
+  const path = `${userId}/covers/${Date.now()}.${extension}`;
+  const { error } = await requireSupabase()
+    .storage
+    .from(AVATAR_BUCKET)
+    .upload(path, file, { contentType: file.type });
+  if (error) throw error;
+  return path;
+}
+
+export async function updateProfileDetails(
+  userId: string,
+  username: string,
+  description: string,
+): Promise<void> {
+  const trimmedUsername = username.trim();
+  const trimmedDescription = description.trim();
+  if (!USERNAME_PATTERN.test(trimmedUsername)) throw new Error('INVALID_USERNAME');
+  if (trimmedDescription.length > 500) throw new Error('INVALID_PROFILE_DESCRIPTION');
+
+  const client = requireSupabase();
+  const { data: isAvailable, error: availabilityError } = await client.rpc(
+    'is_profile_username_available',
+    { candidate: trimmedUsername },
+  );
+  if (availabilityError) throw availabilityError;
+  if (isAvailable !== true) throw new Error('USERNAME_TAKEN');
+
+  const { error } = await client
+    .from('profiles')
+    .update({
+      username: trimmedUsername,
+      channel_description: trimmedDescription || null,
+      updated_at: new Date().toISOString(),
+    })
+    .eq('id', userId);
+  if (error) throw error;
+}
+
+export async function updateProfileCover(
+  userId: string,
+  coverTheme: CoverTheme,
+  coverImagePath: string | null,
+  previousPath: string | null,
+): Promise<void> {
+  const client = requireSupabase();
+  const { error } = await client
+    .from('profiles')
+    .update({
+      cover_theme: coverTheme,
+      cover_image_path: coverImagePath,
+      updated_at: new Date().toISOString(),
+    })
+    .eq('id', userId);
+  if (error) {
+    if (coverImagePath && coverImagePath !== previousPath) {
+      const { error: cleanupError } = await client.storage.from(AVATAR_BUCKET).remove([coverImagePath]);
+      if (cleanupError) console.warn('[IRONSS] Unused profile cover could not be removed.', cleanupError);
+    }
+    throw error;
+  }
+
+  if (previousPath && previousPath !== coverImagePath) {
+    const { error: removeError } = await client.storage.from(AVATAR_BUCKET).remove([previousPath]);
+    if (removeError) console.warn('[IRONSS] Previous profile cover could not be removed.', removeError);
+  }
 }

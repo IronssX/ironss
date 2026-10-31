@@ -135,7 +135,7 @@ export async function fetchVideos(videoType: VideoType): Promise<Video[]> {
   return data.map(mapVideoRow);
 }
 
-export async function fetchOwnVideos(ownerId: string): Promise<Video[]> {
+export async function fetchVideosByOwner(ownerId: string): Promise<Video[]> {
   const videos: VideoRow[] = [];
   const pageSize = 500;
   const client = requireSupabase();
@@ -169,6 +169,10 @@ export async function fetchOwnVideos(ownerId: string): Promise<Video[]> {
   }
 
   return videos.map(mapVideoRow);
+}
+
+export async function fetchOwnVideos(ownerId: string): Promise<Video[]> {
+  return fetchVideosByOwner(ownerId);
 }
 
 interface UploadVideoInput {

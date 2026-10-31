@@ -32,7 +32,7 @@ const sections = [
         <p>Platformun mevcut özellikleri kapsamında aşağıdaki veriler işlenebilir:</p>
         <ul>
           <li><strong>Hesap bilgileri:</strong> Kullanıcı adı, e-posta adresi ve hesap kimliği.</li>
-          <li><strong>Profil bilgileri:</strong> Profil fotoğrafı ve hesap oluşturma/güncelleme zamanları.</li>
+          <li><strong>Profil bilgileri:</strong> Kullanıcı adı, bio, profil fotoğrafı, kapak görseli ve hesap oluşturma/güncelleme zamanları. Kullanıcı adı, bio, profil fotoğrafı ve kapak görseli herkese açık profilinizde görünür; e-posta adresiniz herkese açık profilde gösterilmez.</li>
           <li><strong>Video bilgileri:</strong> Video başlığı, açıklaması, dosya konumu, dosya boyutu, dosya türü ve yüklenme zamanı.</li>
           <li><strong>Etkileşim bilgileri:</strong> Clips beğenileri ve yorumları, standart video yorumları, kanal bağlantıları ve bu etkinliklere ilişkin bildirimler. Uzun videolardaki beğeni, beğenmeme ve kaydetme tercihleri yalnızca kullandığınız tarayıcıda saklanır; misafir yorumları da yalnızca bu tarayıcıda tutulur.</li>
           <li><strong>İzlenme bilgileri:</strong> İzlenen video, izlenme zamanı ve giriş yapmış kullanıcılar için kullanıcı kimliği.</li>
@@ -66,12 +66,12 @@ const sections = [
       <>
         <p>
           IRONSS&apos;un mevcut teknik altyapısında Supabase kullanılmaktadır.
-          Hesap, profil, video, standart video yorumları, Clips etkileşimleri ve bildirim verileri ilgili Supabase
+          Hesap, profil, kapak görseli, video, standart video yorumları, Clips etkileşimleri ve bildirim verileri ilgili Supabase
           hizmetlerinde saklanabilir.
         </p>
         <p>Platform Cloudflare Pages üzerinden yayınlanmaktadır.</p>
         <p>
-          Profil fotoğrafları ve video dosyaları herkese açık depolama
+          Profil ve kapak fotoğrafları ile video dosyaları herkese açık depolama
           alanlarında tutulabildiğinden, yüklenen içeriklerin bağlantısına sahip
           kişiler bu içerikleri görüntüleyebilir.
         </p>

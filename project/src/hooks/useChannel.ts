@@ -8,11 +8,13 @@ import {
   unsubscribeFromChannel,
 } from '@/services/channelService';
 import { fetchProfile, getAvatarUrl } from '@/services/profileService';
+import { fetchVideosByOwner } from '@/services/videoService';
 import type { Profile } from '@/types/profile';
 import { useLanguage } from '@/hooks/useLanguage';
 
 interface ChannelData {
   profile: Profile;
+  videos: Awaited<ReturnType<typeof fetchVideosByOwner>>;
   subscriberCount: number;
   isSubscribed: boolean;
 }
@@ -53,13 +55,14 @@ export function useChannel(channelId: string): UseChannelResult {
       setLoadError(null);
       setSubscriptionError(null);
       try {
-        const [profile, subscriberCount, isSubscribed] = await Promise.all([
+        const [profile, subscriberCount, isSubscribed, videos] = await Promise.all([
           fetchProfile(channelId),
           fetchSubscriberCount(channelId),
           viewerId ? fetchIsSubscribed(viewerId, channelId) : Promise.resolve(false),
+          fetchVideosByOwner(channelId),
         ]);
         if (cancelled) return;
-        setChannel(profile ? { profile, subscriberCount, isSubscribed } : null);
+        setChannel(profile ? { profile, videos, subscriberCount, isSubscribed } : null);
       } catch (loadError) {
         if (cancelled) return;
         setChannel(null);

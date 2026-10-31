@@ -3,4 +3,8 @@ export interface Profile {
   username: string;
   avatarPath: string | null;
   channelDescription: string | null;
+  coverImagePath: string | null;
+  coverTheme: CoverTheme;
 }
+
+export type CoverTheme = 'purple-neon' | 'black' | 'minimal' | 'gaming';

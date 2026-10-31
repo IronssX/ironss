@@ -4,6 +4,7 @@ import { LoadingSpinner } from '@/components/LoadingSpinner';
 import { VideoCard } from '@/components/VideoCard';
 import { useAuth } from '@/hooks/useAuth';
 import { useChannel } from '@/hooks/useChannel';
+import { getAvatarUrl } from '@/services/profileService';
 import { PlaceholderPage } from '@/pages/PlaceholderPage';
 import type { Page } from '@/types/navigation';
 import type { Video } from '@/types/video';
@@ -12,14 +13,14 @@ import { useState } from 'react';
 
 interface ChannelPageProps {
   channelId: string;
-  videos: Video[];
-  onSelectVideo: (videoId: string) => void;
+  onSelectVideo: (videoId: string, video?: Video) => void;
   onNavigate: (page: Page) => void;
 }
 
-export function ChannelPage({ channelId, videos, onSelectVideo, onNavigate }: ChannelPageProps) {
+export function ChannelPage({ channelId, onSelectVideo, onNavigate }: ChannelPageProps) {
   const { t } = useLanguage();
   const [videoType, setVideoType] = useState<'standard' | 'short'>('standard');
+  const [shareFeedback, setShareFeedback] = useState<string | null>(null);
   const { user } = useAuth();
   const { channel, avatarUrl, isLoading, error, isSubscriptionBusy, subscriptionError, toggleSubscription } =
     useChannel(channelId);
@@ -46,7 +47,34 @@ export function ChannelPage({ channelId, videos, onSelectVideo, onNavigate }: Ch
     );
   }
 
+  const videos = channel.videos;
   const displayedVideos = videos.filter((video) => (video.videoType ?? 'standard') === videoType);
+  const totalViews = videos.reduce((total, video) => total + video.views, 0);
+
+  const shareProfile = async () => {
+    const url = new URL(window.location.href);
+    url.searchParams.set('channel', channel.profile.id);
+    setShareFeedback(null);
+    try {
+      if (navigator.share) {
+        try {
+          await navigator.share({
+            title: `${channel.profile.username} | IRONSS`,
+            url: url.toString(),
+          });
+          return;
+        } catch (error) {
+          if (error instanceof DOMException && error.name === 'AbortError') return;
+        }
+      }
+      if (!navigator.clipboard?.writeText) throw new Error('Clipboard unavailable.');
+      await navigator.clipboard.writeText(url.toString());
+      setShareFeedback(t('profile.linkCopied'));
+    } catch (error) {
+      if (error instanceof DOMException && error.name === 'AbortError') return;
+      setShareFeedback(t('profile.shareFailed'));
+    }
+  };
 
   return (
     <div className="flex w-full animate-fade-in flex-col gap-8">
@@ -62,9 +90,12 @@ export function ChannelPage({ channelId, videos, onSelectVideo, onNavigate }: Ch
       <ChannelHeader
         username={channel.profile.username}
         avatarUrl={avatarUrl}
+        coverUrl={channel.profile.coverImagePath ? getAvatarUrl(channel.profile.coverImagePath) : null}
+        coverTheme={channel.profile.coverTheme}
         description={channel.profile.channelDescription}
         subscriberCount={channel.subscriberCount}
         videoCount={videos.length}
+        totalViews={totalViews}
         isOwnChannel={user?.id === channel.profile.id}
         isSignedIn={Boolean(user)}
         isSubscribed={channel.isSubscribed}
@@ -72,7 +103,12 @@ export function ChannelPage({ channelId, videos, onSelectVideo, onNavigate }: Ch
         subscriptionError={subscriptionError}
         onToggleSubscription={toggleSubscription}
         onSignIn={() => onNavigate('login')}
+        onEditProfile={() => onNavigate('profile')}
+        onShare={() => void shareProfile()}
       />
+      {shareFeedback && (
+        <p role="status" className="-mt-6 text-sm text-neon-200">{shareFeedback}</p>
+      )}
 
       <section className="flex flex-col gap-5">
         <div className="flex flex-wrap items-center justify-between gap-3">
@@ -96,9 +132,13 @@ export function ChannelPage({ channelId, videos, onSelectVideo, onNavigate }: Ch
           </div>
         </div>
         {displayedVideos.length > 0 ? (
-          <div className="grid grid-cols-1 gap-x-5 gap-y-8 sm:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-4">
+          <div className="grid grid-cols-2 gap-x-3 gap-y-6 sm:gap-x-5 sm:gap-y-8 xl:grid-cols-3 2xl:grid-cols-4">
             {displayedVideos.map((video) => (
-              <VideoCard key={video.id} video={video} onSelect={onSelectVideo} />
+              <VideoCard
+                key={video.id}
+                video={video}
+                onSelect={(videoId) => onSelectVideo(videoId, video)}
+              />
             ))}
           </div>
         ) : (

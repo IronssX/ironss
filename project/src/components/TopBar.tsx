@@ -115,7 +115,7 @@ export function TopBar({ query, onQueryChange, onToggleSidebar, onGoHome, onNavi
                 aria-label={t('topbar.account')}
                 className="profile-pill flex h-10 items-center gap-2 rounded-xl py-1 pl-1 pr-1 transition-colors sm:pr-3"
               >
-                <UserAvatar name={profile?.username ?? user.email ?? t('topbar.account')} imageUrl={avatarUrl} className="h-8 w-8" />
+                <UserAvatar name={profile?.username ?? t('topbar.account')} imageUrl={avatarUrl} className="h-8 w-8" />
                 <span className="hidden max-w-[7rem] truncate text-sm font-medium text-gray-100 sm:block">
                   {profile?.username ?? t('topbar.account')}
                 </span>

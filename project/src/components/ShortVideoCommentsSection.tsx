@@ -52,7 +52,7 @@ export function ShortVideoCommentsSection({
       {user ? (
         <form onSubmit={handleSubmit} className="flex gap-2.5">
           <UserAvatar
-            name={profile?.username ?? user.email ?? t('profile.guest')}
+            name={profile?.username ?? t('topbar.account')}
             imageUrl={avatarUrl}
             className="h-8 w-8 text-xs"
           />

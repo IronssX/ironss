@@ -18,7 +18,7 @@ import { SettingsPage } from '@/pages/SettingsPage';
 import { UploadChoicePage } from '@/pages/UploadChoicePage';
 import { NotificationsPage } from '@/pages/NotificationsPage';
 import type { Page } from '@/types/navigation';
-import type { CategoryFilter } from '@/types/video';
+import type { CategoryFilter, Video } from '@/types/video';
 import { useLanguage } from '@/hooks/useLanguage';
 import { useAuth } from '@/hooks/useAuth';
 import { useNotifications } from '@/hooks/useNotifications';
@@ -27,9 +27,19 @@ function App() {
   const { t } = useLanguage();
   const { user } = useAuth();
   const notificationState = useNotifications(user?.id ?? null);
-  const [page, setPage] = useState<Page>(() => (new URLSearchParams(window.location.search).has('video') ? 'watch' : 'home'));
-  const [selectedVideoId, setSelectedVideoId] = useState<string | null>(() => new URLSearchParams(window.location.search).get('video'));
-  const [selectedChannelId, setSelectedChannelId] = useState<string | null>(null);
+  const [page, setPage] = useState<Page>(() => {
+    const params = new URLSearchParams(window.location.search);
+    if (params.has('video')) return 'watch';
+    if (params.has('channel')) return 'channel';
+    return 'home';
+  });
+  const [selectedVideoId, setSelectedVideoId] = useState<string | null>(
+    () => new URLSearchParams(window.location.search).get('video'),
+  );
+  const [selectedVideoOverride, setSelectedVideoOverride] = useState<Video | null>(null);
+  const [selectedChannelId, setSelectedChannelId] = useState<string | null>(
+    () => new URLSearchParams(window.location.search).get('channel'),
+  );
   const [query, setQuery] = useState('');
   const [category, setCategory] = useState<CategoryFilter>('All');
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
@@ -67,23 +77,25 @@ function App() {
     [allVideos],
   );
 
-  const selectedVideo = allUploadedVideos.find((video) => video.id === selectedVideoId) ?? null;
+  const selectedVideo = selectedVideoOverride?.id === selectedVideoId
+    ? selectedVideoOverride
+    : allUploadedVideos.find((video) => video.id === selectedVideoId) ?? null;
 
   const scrollToTop = () => window.scrollTo({ top: 0, behavior: 'smooth' });
 
   const navigate = (nextPage: Page) => {
-    if (nextPage !== 'watch') {
-      const currentUrl = new URL(window.location.href);
-      currentUrl.searchParams.delete('video');
-      window.history.replaceState(window.history.state, '', currentUrl);
-    }
+    const currentUrl = new URL(window.location.href);
+    if (nextPage !== 'watch') currentUrl.searchParams.delete('video');
+    if (nextPage !== 'channel') currentUrl.searchParams.delete('channel');
+    window.history.replaceState(window.history.state, '', currentUrl);
     setPage(nextPage);
     setIsSidebarOpen(false);
     scrollToTop();
   };
 
-  const openVideo = (videoId: string) => {
+  const openVideo = (videoId: string, video?: Video) => {
     setSelectedVideoId(videoId);
+    setSelectedVideoOverride(video ?? null);
     const videoUrl = new URL(window.location.href);
     videoUrl.searchParams.set('video', videoId);
     window.history.replaceState(window.history.state, '', videoUrl);
@@ -92,6 +104,10 @@ function App() {
 
   const openChannel = (channelId: string) => {
     setSelectedChannelId(channelId);
+    const channelUrl = new URL(window.location.href);
+    channelUrl.searchParams.delete('video');
+    channelUrl.searchParams.set('channel', channelId);
+    window.history.replaceState(window.history.state, '', channelUrl);
     navigate('channel');
   };
 
@@ -218,7 +234,6 @@ function App() {
           <ChannelPage
             key={selectedChannelId}
             channelId={selectedChannelId}
-            videos={allUploadedVideos.filter((video) => video.ownerId === selectedChannelId)}
             onSelectVideo={openVideo}
             onNavigate={navigate}
           />
