@@ -34,7 +34,7 @@ const sections = [
           <li><strong>Hesap bilgileri:</strong> Kullanıcı adı, e-posta adresi ve hesap kimliği.</li>
           <li><strong>Profil bilgileri:</strong> Profil fotoğrafı ve hesap oluşturma/güncelleme zamanları.</li>
           <li><strong>Video bilgileri:</strong> Video başlığı, açıklaması, dosya konumu, dosya boyutu, dosya türü ve yüklenme zamanı.</li>
-          <li><strong>Etkileşim bilgileri:</strong> Shorts beğenileri, yorumları ve kanal abonelikleri.</li>
+          <li><strong>Etkileşim bilgileri:</strong> Clips beğenileri, yorumları ve kanal abonelikleri.</li>
           <li><strong>İzlenme bilgileri:</strong> İzlenen video, izlenme zamanı ve giriş yapmış kullanıcılar için kullanıcı kimliği.</li>
         </ul>
         <p>

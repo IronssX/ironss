@@ -41,12 +41,23 @@ export function ShortsPage({ videos, schemaMissing, onNavigate, onOpenChannel }:
   const [isMuted, setIsMuted] = useState(shortsStartMuted);
   const [isPlaying, setIsPlaying] = useState(true);
   const [showComments, setShowComments] = useState(false);
+  const [isCommentsMounted, setIsCommentsMounted] = useState(false);
+  const [isCommentsPanelOpen, setIsCommentsPanelOpen] = useState(false);
   const [shareMessage, setShareMessage] = useState('');
   const [playbackError, setPlaybackError] = useState(false);
+  const [heartAnimationKey, setHeartAnimationKey] = useState(0);
+  const [isHeartAnimating, setIsHeartAnimating] = useState(false);
+  const [particleBurstKey, setParticleBurstKey] = useState(0);
+  const [showLikeParticles, setShowLikeParticles] = useState(false);
   const videoRef = useRef<HTMLVideoElement>(null);
   const lastNavigationRef = useRef(0);
   const touchStartRef = useRef<number | null>(null);
+  const commentsUnmountTimer = useRef<number | null>(null);
+  const commentsAnimationFrame = useRef<number | null>(null);
+  const heartAnimationTimer = useRef<number | null>(null);
+  const particleBurstTimer = useRef<number | null>(null);
   const activeVideo = videos[activeIndex];
+  const { reduceMotion } = useSettings();
   const {
     likeCount,
     isLiked,
@@ -66,6 +77,74 @@ export function ShortsPage({ videos, schemaMissing, onNavigate, onOpenChannel }:
     toggleSubscription,
   } = useChannel(activeVideo?.ownerId ?? '');
   const isOwnChannel = Boolean(user && activeVideo?.ownerId === user.id);
+  useEffect(() => {
+    if (showComments) {
+      if (commentsUnmountTimer.current !== null) {
+        window.clearTimeout(commentsUnmountTimer.current);
+        commentsUnmountTimer.current = null;
+      }
+      setIsCommentsMounted(true);
+      setIsCommentsPanelOpen(false);
+      commentsAnimationFrame.current = window.requestAnimationFrame(() => {
+        setIsCommentsPanelOpen(true);
+        commentsAnimationFrame.current = null;
+      });
+      return () => {
+        if (commentsAnimationFrame.current !== null) {
+          window.cancelAnimationFrame(commentsAnimationFrame.current);
+          commentsAnimationFrame.current = null;
+        }
+      };
+    }
+
+    setIsCommentsPanelOpen(false);
+    commentsUnmountTimer.current = window.setTimeout(() => {
+      setIsCommentsMounted(false);
+      commentsUnmountTimer.current = null;
+    }, reduceMotion ? 0 : 220);
+
+    return () => {
+      if (commentsUnmountTimer.current !== null) {
+        window.clearTimeout(commentsUnmountTimer.current);
+        commentsUnmountTimer.current = null;
+      }
+    };
+  }, [reduceMotion, showComments]);
+
+  useEffect(() => () => {
+    if (commentsUnmountTimer.current !== null) window.clearTimeout(commentsUnmountTimer.current);
+    if (commentsAnimationFrame.current !== null) window.cancelAnimationFrame(commentsAnimationFrame.current);
+    if (heartAnimationTimer.current !== null) window.clearTimeout(heartAnimationTimer.current);
+    if (particleBurstTimer.current !== null) window.clearTimeout(particleBurstTimer.current);
+  }, []);
+
+  const handleLike = async () => {
+    if (!user) {
+      onNavigate('login');
+      return;
+    }
+    const isFirstLike = !isLiked;
+    if (await toggleLike()) {
+      if (!reduceMotion) {
+        setHeartAnimationKey((current) => current + 1);
+        setIsHeartAnimating(true);
+        if (heartAnimationTimer.current !== null) window.clearTimeout(heartAnimationTimer.current);
+        heartAnimationTimer.current = window.setTimeout(() => {
+          setIsHeartAnimating(false);
+          heartAnimationTimer.current = null;
+        }, 440);
+        if (isFirstLike) {
+          setParticleBurstKey((current) => current + 1);
+          setShowLikeParticles(true);
+          if (particleBurstTimer.current !== null) window.clearTimeout(particleBurstTimer.current);
+          particleBurstTimer.current = window.setTimeout(() => {
+            setShowLikeParticles(false);
+            particleBurstTimer.current = null;
+          }, 540);
+        }
+      }
+    }
+  };
   const navigateVideo = useCallback((direction: 1 | -1) => {
     const now = Date.now();
     if (now - lastNavigationRef.current < 450) return;
@@ -185,7 +264,7 @@ export function ShortsPage({ videos, schemaMissing, onNavigate, onOpenChannel }:
       <div className="shorts-ambient pointer-events-none absolute inset-0" />
       <div className="absolute left-5 top-5 z-20 hidden items-center gap-2 text-[11px] font-bold tracking-[.18em] text-white/50 sm:flex">
         <Clapperboard className="h-4 w-4 text-neon-200" />
-        IRONSS / SHORTS
+        IRONSS / CLIPS
       </div>
       <button type="button" onClick={() => onNavigate('home')} aria-label={t('shorts.close')} className="absolute right-4 top-4 z-30 flex h-10 w-10 items-center justify-center rounded-full border border-white/10 bg-black/35 text-white/80 backdrop-blur-md transition-colors hover:bg-white/10 hover:text-white sm:right-6 sm:top-5">
         <X className="h-5 w-5" />
@@ -215,7 +294,7 @@ export function ShortsPage({ videos, schemaMissing, onNavigate, onOpenChannel }:
           <div className="pointer-events-none absolute inset-x-0 bottom-0 h-56 bg-gradient-to-t from-black/90 via-black/35 to-transparent" />
           <div className="absolute left-4 top-4 flex items-center gap-1.5 rounded-full border border-white/10 bg-black/35 px-3 py-1.5 text-[10px] font-semibold text-white/80 backdrop-blur-md sm:hidden">
             <Clapperboard className="h-3.5 w-3.5 text-neon-200" />
-            SHORTS
+            CLIPS
           </div>
 
           <div className="absolute bottom-5 left-4 right-[4.5rem] z-10 sm:bottom-7 sm:left-5 sm:right-[4.8rem]">
@@ -247,16 +326,27 @@ export function ShortsPage({ videos, schemaMissing, onNavigate, onOpenChannel }:
             </button>
             <button
               type="button"
-              onClick={() => user ? void toggleLike() : onNavigate('login')}
+              onClick={() => void handleLike()}
               disabled={isLikeLoading || isLikeBusy}
               aria-pressed={isLiked}
               aria-label={t(isLiked ? 'like.liked' : 'like.like')}
-              className="shorts-control-button disabled:opacity-50"
+              className="shorts-control-button group/like disabled:opacity-50"
             >
-              <Heart className={`h-6 w-6 ${isLiked ? 'fill-neon-200 text-neon-200' : ''}`} />
-              <span>{formatExactCount(likeCount, language)}</span>
+              <span key={heartAnimationKey} className={isHeartAnimating && !reduceMotion ? 'animate-heart-pop relative' : 'relative'}>
+                <Heart className={`h-6 w-6 transition-colors duration-200 ${isLiked ? 'fill-rose-400 text-rose-400' : 'text-white'}`} />
+                {showLikeParticles && !reduceMotion && (
+                  <span key={particleBurstKey} className="like-particle-burst" aria-hidden="true">
+                    {Array.from({ length: 6 }, (_, index) => <span key={index} />)}
+                  </span>
+                )}
+              </span>
+              <span className="relative grid h-4 place-items-center overflow-hidden tabular-nums">
+                <span key={likeCount} className={reduceMotion ? '' : 'animate-like-count'}>
+                  {formatExactCount(likeCount, language)}
+                </span>
+              </span>
             </button>
-            <button type="button" onClick={() => setShowComments((shown) => !shown)} aria-expanded={showComments} aria-label={t('shorts.comments')} className="shorts-control-button">
+            <button type="button" onClick={() => setShowComments((shown) => !shown)} aria-expanded={showComments} aria-label={t('shorts.comments')} className="shorts-control-button transition-transform duration-200 hover:scale-110 active:scale-95">
               <MessageCircle className="h-6 w-6" />
               <span>{formatExactCount(shortComments.commentCount, language)}</span>
             </button>
@@ -293,8 +383,8 @@ export function ShortsPage({ videos, schemaMissing, onNavigate, onOpenChannel }:
         </div>
       </div>
 
-      {showComments && (
-        <div data-shorts-comments className="absolute inset-x-3 bottom-3 z-30 max-h-[54dvh] overflow-y-auto rounded-2xl border border-white/10 bg-[#15131b]/95 p-4 shadow-2xl backdrop-blur-xl sm:inset-y-16 sm:left-auto sm:right-6 sm:w-[min(380px,calc(100vw-48px))] sm:max-h-[calc(100dvh-8rem)]">
+      {isCommentsMounted && (
+        <div data-shorts-comments data-state={isCommentsPanelOpen ? 'open' : 'closed'} aria-hidden={!isCommentsPanelOpen} className="clips-comments-panel absolute inset-x-3 bottom-3 z-30 max-h-[54dvh] overflow-y-auto rounded-2xl border border-white/10 bg-[#15131b]/95 p-4 shadow-2xl backdrop-blur-xl sm:inset-y-16 sm:left-auto sm:right-6 sm:w-[min(380px,calc(100vw-48px))] sm:max-h-[calc(100dvh-8rem)]">
           <div className="mb-4 flex items-center justify-between">
             <h2 className="text-sm font-semibold text-white">{t('shorts.comments')}</h2>
             <button type="button" onClick={() => setShowComments(false)} aria-label={t('shorts.closeComments')} className="icon-button h-8 w-8"><X className="h-4 w-4" /></button>

@@ -49,7 +49,7 @@ export function useShortVideoLikes(videoId: string) {
   }, [user?.id, videoId]);
 
   const toggleLike = async () => {
-    if (!user || isBusy) return;
+    if (!user || isBusy) return false;
     setIsBusy(true);
     setHasError(false);
     const nextIsLiked = !isLiked;
@@ -59,9 +59,11 @@ export function useShortVideoLikes(videoId: string) {
       setIsLiked(nextIsLiked);
       setLikeCount((current) => Math.max(0, current + (nextIsLiked ? 1 : -1)));
       await refresh();
+      return true;
     } catch (error) {
       logSupabaseFailure('short-video-likes', 'toggleLike', error);
       setHasError(true);
+      return false;
     } finally {
       setIsBusy(false);
     }

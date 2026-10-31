@@ -53,7 +53,7 @@ const categories: { id: CategoryId; icon: LucideIcon; tr: string; en: string; de
   { id: 'privacy', icon: Shield, tr: 'Gizlilik', en: 'Privacy', descriptionTr: 'Gizlilik politikası ve veri talepleri.', descriptionEn: 'Privacy policy and data requests.' },
   { id: 'security', icon: LockKeyhole, tr: 'Güvenlik', en: 'Security', descriptionTr: 'Hesabınız ve mevcut güvenlik seçenekleri.', descriptionEn: 'Your account and available security options.' },
   { id: 'playback', icon: Play, tr: 'Video oynatma', en: 'Video playback', descriptionTr: 'Video oynatıcı kontrolleri hakkında bilgi.', descriptionEn: 'Information about video player controls.' },
-  { id: 'shorts', icon: Clapperboard, tr: 'Shorts tercihleri', en: 'Shorts preferences', descriptionTr: 'Shorts deneyiminin kullanılabilir tercihleri.', descriptionEn: 'Available preferences for the Shorts experience.' },
+  { id: 'shorts', icon: Clapperboard, tr: 'Clips tercihleri', en: 'Clips preferences', descriptionTr: 'Clips deneyiminin kullanılabilir tercihleri.', descriptionEn: 'Available preferences for the Clips experience.' },
   { id: 'data', icon: Database, tr: 'Veri kullanımı', en: 'Data usage', descriptionTr: 'Depolama ve ağ kullanımı hakkında bilgi.', descriptionEn: 'Information about storage and network usage.' },
   { id: 'support', icon: CircleHelp, tr: 'Yardım ve destek', en: 'Help & support', descriptionTr: 'IRONSS destek ekibiyle iletişime geçin.', descriptionEn: 'Contact the IRONSS support team.' },
   { id: 'about', icon: FileText, tr: 'Hakkında', en: 'About', descriptionTr: 'IRONSS ve yasal sayfalar hakkında.', descriptionEn: 'About IRONSS and its legal pages.' },
@@ -283,8 +283,8 @@ export function SettingsPage({ onNavigate }: SettingsPageProps) {
 
           {activeCategory === 'shorts' && (
             <div className="divide-y divide-white/[0.06] pt-2">
-              <SettingRow title={text('Shorts sessiz başlasın', 'Start Shorts muted')} description={text('Shorts videoları açıldığında varsayılan ses durumunu belirler.', 'Sets the default audio state when a Short opens.')}>
-                <Toggle checked={settings.shortsStartMuted} onChange={(value) => settings.updateSetting('shortsStartMuted', value)} label={text('Shorts sessiz başlasın', 'Start Shorts muted')} />
+              <SettingRow title={text('Clips sessiz başlasın', 'Start Clips muted')} description={text('Clips videoları açıldığında varsayılan ses durumunu belirler.', 'Sets the default audio state when a Clip opens.')}>
+                <Toggle checked={settings.shortsStartMuted} onChange={(value) => settings.updateSetting('shortsStartMuted', value)} label={text('Clips sessiz başlasın', 'Start Clips muted')} />
               </SettingRow>
               <Notice>{text('Otomatik oynatma tercihi tarayıcı ve cihaz kısıtlamalarına bağlıdır; ayrı bir oynatma kontrolü olarak sunulmaz.', 'Autoplay is subject to browser and device restrictions and is not exposed as a separate preference.')}</Notice>
             </div>
