@@ -135,6 +135,18 @@ export function FeedPage({
           )}
         </div>
       )}
+
+      {isHome && (
+        <footer className="mt-5 flex flex-col items-center justify-between gap-3 border-t border-white/[0.08] pt-5 text-xs text-gray-500 sm:flex-row">
+          <span>© IRONSS</span>
+          <a
+            href="/privacy-policy"
+            className="rounded-md transition-colors hover:text-neon-200"
+          >
+            Gizlilik Politikası
+          </a>
+        </footer>
+      )}
     </div>
   );
 }

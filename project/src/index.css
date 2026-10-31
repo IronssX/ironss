@@ -260,6 +260,32 @@
       #09080d;
   }
 
+  .policy-copy ul {
+    list-style: disc;
+    padding-left: 1.25rem;
+  }
+
+  .policy-copy li + li {
+    margin-top: .35rem;
+  }
+
+  .policy-copy strong {
+    color: #e7d8f6;
+    font-weight: 600;
+  }
+
+  .policy-copy a {
+    color: #cda3f5;
+    text-decoration: underline;
+    text-decoration-color: rgba(205, 163, 245, .35);
+    text-underline-offset: 3px;
+  }
+
+  .policy-copy a:hover {
+    color: #ead7ff;
+    text-decoration-color: currentColor;
+  }
+
   @media (max-width: 767px) {
     body {
       padding-bottom: 90px;
