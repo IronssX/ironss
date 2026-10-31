@@ -28,15 +28,20 @@ export function CommentsSection({ videoId }: CommentsSectionProps) {
   };
 
   return (
-    <section aria-labelledby="comments-heading" className="flex flex-col gap-5">
-      <div className="flex items-center gap-2">
-        <MessageSquare className="h-5 w-5 text-neon-300" />
-        <h2 id="comments-heading" className="text-lg font-bold text-white">
-          {formatExactCount(comments.length, language)} {comments.length === 1 ? t('comments.one') : t('comments.other')}
-        </h2>
+    <section aria-labelledby="comments-heading" className="flex flex-col gap-5 rounded-2xl border border-white/[0.07] bg-white/[0.015] p-4 sm:p-5">
+      <div className="flex items-center justify-between gap-3">
+        <div className="flex items-center gap-2">
+          <MessageSquare className="h-5 w-5 text-neon-300" />
+          <h2 id="comments-heading" className="text-lg font-bold text-white">
+            {formatExactCount(comments.length, language)} {comments.length === 1 ? t('comments.one') : t('comments.other')}
+          </h2>
+        </div>
+        <span className="rounded-full border border-white/[0.06] bg-white/[0.025] px-2.5 py-1 text-[10px] font-medium text-gray-500">
+          {t('comments.write')}
+        </span>
       </div>
 
-      <form onSubmit={handleSubmit} className="flex gap-3">
+      <form onSubmit={handleSubmit} className="flex items-start gap-3">
         <span
           aria-hidden="true"
           className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-gradient-to-br from-neon-500 to-neon-700 text-sm font-bold text-white"
@@ -54,7 +59,7 @@ export function CommentsSection({ videoId }: CommentsSectionProps) {
             maxLength={MAX_COMMENT_LENGTH}
             rows={3}
             placeholder={t('comments.placeholder')}
-            className="w-full resize-y rounded-xl border border-surface-border bg-surface px-4 py-3 text-sm text-gray-100 placeholder:text-gray-500 transition-colors focus:border-neon-500 focus:outline-none focus:ring-2 focus:ring-neon-500/30"
+            className="w-full min-h-24 resize-y rounded-xl border border-surface-border bg-surface px-4 py-3 text-sm text-gray-100 placeholder:text-gray-500 transition-colors focus:border-neon-500 focus:outline-none focus:ring-2 focus:ring-neon-500/30"
           />
           <div className="flex items-center justify-between gap-3">
             <span className="text-xs tabular-nums text-gray-500">
@@ -79,9 +84,9 @@ export function CommentsSection({ videoId }: CommentsSectionProps) {
       )}
 
       {comments.length > 0 ? (
-        <ul className="flex flex-col gap-5">
+        <ul className="flex flex-col gap-4">
           {comments.map((comment) => (
-            <li key={comment.id} className="flex animate-fade-in gap-3">
+            <li key={comment.id} className="flex animate-fade-in gap-3 rounded-xl border border-white/[0.045] bg-white/[0.015] p-3 sm:p-4">
               <span
                 aria-hidden="true"
                 className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-surface-raised text-sm font-bold text-neon-300"

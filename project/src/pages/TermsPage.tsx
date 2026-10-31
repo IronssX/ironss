@@ -81,8 +81,8 @@ const sections = [
     content: (
       <>
         <p>
-          Kullanıcılar videoları beğenebilir, yorum yapabilir ve kanallara abone
-          olabilir.
+          Kullanıcılar videoları beğenebilir, yorum yapabilir ve kanallarla bağlantı
+          kurabilir.
         </p>
         <p>
           Yorumlarda saygılı bir dil kullanılmalıdır. Spam, taciz, tehdit ve

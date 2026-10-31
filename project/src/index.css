@@ -483,6 +483,12 @@
     100% { opacity: 0; transform: translate(var(--particle-x), var(--particle-y)) scale(.25); }
   }
 
+  @keyframes connection-pulse {
+    0% { transform: scale(1); box-shadow: 0 0 0 0 rgba(176, 38, 255, .36); }
+    45% { transform: scale(1.035); box-shadow: 0 0 0 8px rgba(176, 38, 255, 0); }
+    100% { transform: scale(1); box-shadow: 0 0 0 0 rgba(176, 38, 255, 0); }
+  }
+
   .animate-heart-pop {
     animation: like-heart-pop 420ms cubic-bezier(.2, .8, .25, 1);
     will-change: transform;
@@ -490,6 +496,10 @@
 
   .animate-like-count {
     animation: like-count-change 220ms ease-out;
+  }
+
+  .animate-connection-pulse {
+    animation: connection-pulse 440ms ease-out;
   }
 
   .like-particle-burst {
@@ -538,6 +548,7 @@
   @media (prefers-reduced-motion: reduce) {
     .animate-heart-pop,
     .animate-like-count,
+    .animate-connection-pulse,
     .like-particle-burst > span {
       animation: none !important;
     }
@@ -550,6 +561,7 @@
 
   html[data-reduce-motion='true'] .animate-heart-pop,
   html[data-reduce-motion='true'] .animate-like-count,
+  html[data-reduce-motion='true'] .animate-connection-pulse,
   html[data-reduce-motion='true'] .like-particle-burst > span {
     animation: none !important;
   }

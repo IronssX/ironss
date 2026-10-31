@@ -24,7 +24,7 @@ export interface UseChannelResult {
   error: string | null;
   isSubscriptionBusy: boolean;
   subscriptionError: string | null;
-  toggleSubscription: () => Promise<void>;
+  toggleSubscription: () => Promise<boolean>;
 }
 
 export function useChannel(channelId: string): UseChannelResult {
@@ -74,8 +74,8 @@ export function useChannel(channelId: string): UseChannelResult {
     };
   }, [channelId, viewerId]);
 
-  const toggleSubscription = async () => {
-    if (!channel || !viewerId || channel.profile.id === viewerId) return;
+  const toggleSubscription = async (): Promise<boolean> => {
+    if (!channel || !viewerId || channel.profile.id === viewerId) return false;
 
     setIsSubscriptionBusy(true);
     setSubscriptionError(null);
@@ -90,8 +90,10 @@ export function useChannel(channelId: string): UseChannelResult {
         fetchIsSubscribed(viewerId, channelId),
       ]);
       setChannel((current) => (current ? { ...current, subscriberCount, isSubscribed } : current));
+      return true;
     } catch (toggleError) {
       setSubscriptionError(toggleError);
+      return false;
     } finally {
       setIsSubscriptionBusy(false);
     }

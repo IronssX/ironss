@@ -22,8 +22,8 @@ import { useLanguage } from '@/hooks/useLanguage';
 
 function App() {
   const { t } = useLanguage();
-  const [page, setPage] = useState<Page>('home');
-  const [selectedVideoId, setSelectedVideoId] = useState<string | null>(null);
+  const [page, setPage] = useState<Page>(() => (new URLSearchParams(window.location.search).has('video') ? 'watch' : 'home'));
+  const [selectedVideoId, setSelectedVideoId] = useState<string | null>(() => new URLSearchParams(window.location.search).get('video'));
   const [selectedChannelId, setSelectedChannelId] = useState<string | null>(null);
   const [query, setQuery] = useState('');
   const [category, setCategory] = useState<CategoryFilter>('All');
@@ -67,6 +67,11 @@ function App() {
   const scrollToTop = () => window.scrollTo({ top: 0, behavior: 'smooth' });
 
   const navigate = (nextPage: Page) => {
+    if (nextPage !== 'watch') {
+      const currentUrl = new URL(window.location.href);
+      currentUrl.searchParams.delete('video');
+      window.history.replaceState(window.history.state, '', currentUrl);
+    }
     setPage(nextPage);
     setIsSidebarOpen(false);
     scrollToTop();
@@ -74,6 +79,9 @@ function App() {
 
   const openVideo = (videoId: string) => {
     setSelectedVideoId(videoId);
+    const videoUrl = new URL(window.location.href);
+    videoUrl.searchParams.set('video', videoId);
+    window.history.replaceState(window.history.state, '', videoUrl);
     navigate('watch');
   };
 
@@ -223,6 +231,7 @@ function App() {
             onSelectVideo={openVideo}
             onOpenChannel={openChannel}
             onViewRecorded={handleViewRecorded}
+            onNavigate={navigate}
           />
         );
     }

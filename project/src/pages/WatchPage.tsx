@@ -1,5 +1,5 @@
-import { ArrowLeft, Eye } from 'lucide-react';
-import { useRef } from 'react';
+import { ArrowLeft, Bookmark, Check, Eye, Link2, Mail, ThumbsDown, UserPlus } from 'lucide-react';
+import { useRef, useState } from 'react';
 import { CommentsSection } from '@/components/CommentsSection';
 import { LikeButton } from '@/components/LikeButton';
 import { Thumbnail } from '@/components/Thumbnail';
@@ -8,6 +8,12 @@ import { getInitials, formatUploadDate, formatViews } from '@/utils/format';
 import { recordVideoView } from '@/services/videoService';
 import type { Video } from '@/types/video';
 import { useLanguage } from '@/hooks/useLanguage';
+import { useVideoLike } from '@/hooks/useVideoLike';
+import { useVideoLocalPreferences } from '@/hooks/useVideoLocalPreferences';
+import { useChannel } from '@/hooks/useChannel';
+import { useAuth } from '@/hooks/useAuth';
+import { useSettings } from '@/hooks/useSettings';
+import type { Page } from '@/types/navigation';
 
 interface WatchPageProps {
   video: Video;
@@ -16,11 +22,16 @@ interface WatchPageProps {
   onSelectVideo: (videoId: string) => void;
   onOpenChannel: (channelId: string) => void;
   onViewRecorded: (videoId: string, views: number) => void;
+  onNavigate: (page: Page) => void;
 }
 
-export function WatchPage({ video, relatedVideos, onBack, onSelectVideo, onOpenChannel, onViewRecorded }: WatchPageProps) {
+export function WatchPage({ video, relatedVideos, onBack, onSelectVideo, onOpenChannel, onViewRecorded, onNavigate }: WatchPageProps) {
   const { language, t } = useLanguage();
+  const { user } = useAuth();
+  const { reduceMotion } = useSettings();
   const recordedVideoIdRef = useRef<string | null>(null);
+  const [actionFeedback, setActionFeedback] = useState('');
+  const [connectionAnimated, setConnectionAnimated] = useState(false);
   const handlePlay = () => {
     if (recordedVideoIdRef.current === video.id) return;
     const videoId = video.id;
@@ -33,9 +44,64 @@ export function WatchPage({ video, relatedVideos, onBack, onSelectVideo, onOpenC
       });
   };
   const channelId = video.ownerId;
+  const { channel, error: channelError, isSubscriptionBusy, subscriptionError, toggleSubscription } = useChannel(channelId ?? '');
+  const { isLiked, toggleLike } = useVideoLike(video.id);
+  const { isDisliked, isSaved, toggleDislike, clearDislike, toggleSaved } = useVideoLocalPreferences(video.id);
+  const shareUrl = new URL(window.location.href);
+  shareUrl.searchParams.set('video', video.id);
   const openChannel = () => {
     if (channelId) onOpenChannel(channelId);
   };
+  const handleLike = () => {
+    if (!isLiked && isDisliked) clearDislike();
+    toggleLike();
+  };
+  const handleDislike = () => {
+    if (!isDisliked && isLiked) toggleLike();
+    const saved = toggleDislike();
+    setActionFeedback(saved ? t('watch.preferenceSaved') : t('watch.preferenceSaveFailed'));
+  };
+  const handleSave = () => {
+    const saved = toggleSaved();
+    setActionFeedback(saved ? t('watch.preferenceSaved') : t('watch.preferenceSaveFailed'));
+  };
+  const handleShare = async () => {
+    try {
+      if (navigator.share) {
+        try {
+          await navigator.share({ title: video.title, text: video.description, url: shareUrl.toString() });
+          setActionFeedback(t('watch.shareOpened'));
+          return;
+        } catch (error) {
+          if (error instanceof DOMException && error.name === 'AbortError') {
+            setActionFeedback(t('watch.shareCancelled'));
+            return;
+          }
+          console.warn('[IRONSS] Native sharing is unavailable; trying to copy the video link.', error);
+        }
+      }
+      if (!navigator.clipboard?.writeText) throw new Error('Clipboard access is unavailable.');
+      await navigator.clipboard.writeText(shareUrl.toString());
+      setActionFeedback(t('watch.shareSuccess'));
+    } catch (error) {
+      console.warn('[IRONSS] Video link could not be shared.', error);
+      setActionFeedback(t('watch.shareFailed'));
+    }
+  };
+  const handleConnection = async () => {
+    if (!user) {
+      onNavigate('login');
+      return;
+    }
+    const changed = await toggleSubscription();
+    if (changed) {
+      setConnectionAnimated(true);
+      window.setTimeout(() => setConnectionAnimated(false), reduceMotion ? 0 : 460);
+    }
+  };
+  const reportHref = `mailto:ironss.support@gmail.com?subject=${encodeURIComponent(
+    t('watch.reportSubject', { title: video.title }),
+  )}&body=${encodeURIComponent(t('watch.reportBody', { title: video.title, id: video.id, url: shareUrl.toString() }))}`;
   const creatorContent = (
     <>
       <span className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full bg-gradient-to-br from-neon-500 to-neon-700 text-sm font-bold text-white">
@@ -74,7 +140,7 @@ export function WatchPage({ video, relatedVideos, onBack, onSelectVideo, onOpenC
             </p>
           </div>
 
-          <div className="flex items-center justify-between gap-3 border-y border-white/[0.07] py-4">
+          <div className="flex flex-col gap-4 border-y border-white/[0.07] py-4 sm:flex-row sm:items-center sm:justify-between">
             {channelId ? (
               <button
                 type="button"
@@ -87,8 +153,81 @@ export function WatchPage({ video, relatedVideos, onBack, onSelectVideo, onOpenC
             ) : (
               <div className="flex min-w-0 items-center gap-3">{creatorContent}</div>
             )}
-            <LikeButton key={video.id} videoId={video.id} baseLikes={video.likes} />
+            {channel && channel.profile.id !== user?.id && (
+              <button
+                type="button"
+                onClick={handleConnection}
+                disabled={isSubscriptionBusy}
+                aria-pressed={channel?.isSubscribed ?? false}
+                className={`inline-flex min-h-10 shrink-0 items-center justify-center gap-2 rounded-xl px-4 py-2 text-sm font-semibold transition-all duration-200 hover:-translate-y-0.5 active:scale-95 disabled:cursor-not-allowed disabled:opacity-60 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-neon-300 ${
+                  channel?.isSubscribed
+                    ? 'border border-neon-300/30 bg-neon-300/10 text-neon-100 hover:border-pink-300/50 hover:bg-pink-500/10 hover:text-pink-200'
+                    : 'bg-neon-500 text-white shadow-[0_0_18px_-8px_rgba(176,38,255,.9)] hover:bg-neon-400'
+                } ${connectionAnimated && !reduceMotion ? 'animate-connection-pulse' : ''}`}
+              >
+                {channel?.isSubscribed ? <Check className="h-4 w-4" /> : <UserPlus className="h-4 w-4" />}
+                {isSubscriptionBusy
+                  ? t('profile.saving')
+                  : !user
+                    ? t('watch.connectSignIn')
+                    : channel?.isSubscribed
+                      ? t('watch.disconnect')
+                      : t('watch.connect')}
+              </button>
+            )}
           </div>
+
+          <div className="flex flex-wrap items-center gap-2" aria-label={t('watch.videoActions')}>
+            <LikeButton baseLikes={video.likes} isLiked={isLiked} onToggle={handleLike} />
+            <button
+              type="button"
+              onClick={handleDislike}
+              aria-pressed={isDisliked}
+              className={`inline-flex min-h-10 items-center gap-2 rounded-xl border px-3.5 py-2 text-sm font-medium transition-all duration-200 hover:-translate-y-0.5 active:scale-95 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-neon-300 ${
+                isDisliked ? 'border-neon-300/30 bg-neon-300/10 text-neon-100' : 'border-white/10 bg-white/[0.03] text-gray-300 hover:border-neon-300/30 hover:text-white'
+              }`}
+            >
+              <ThumbsDown className={`h-4 w-4 transition-transform duration-200 ${isDisliked && !reduceMotion ? 'scale-110' : ''}`} />
+              <span>{t('watch.dislike')}</span>
+            </button>
+            <button
+              type="button"
+              onClick={handleShare}
+              className="inline-flex min-h-10 items-center gap-2 rounded-xl border border-white/10 bg-white/[0.03] px-3.5 py-2 text-sm font-medium text-gray-300 transition-all duration-200 hover:-translate-y-0.5 hover:border-neon-300/30 hover:text-white active:scale-95 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-neon-300"
+            >
+              <Link2 className="h-4 w-4" />
+              <span>{t('watch.share')}</span>
+            </button>
+            <button
+              type="button"
+              onClick={handleSave}
+              aria-pressed={isSaved}
+              className={`inline-flex min-h-10 items-center gap-2 rounded-xl border px-3.5 py-2 text-sm font-medium transition-all duration-200 hover:-translate-y-0.5 active:scale-95 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-neon-300 ${
+                isSaved ? 'border-neon-300/30 bg-neon-300/10 text-neon-100' : 'border-white/10 bg-white/[0.03] text-gray-300 hover:border-neon-300/30 hover:text-white'
+              }`}
+            >
+              {isSaved ? <Check className="h-4 w-4" /> : <Bookmark className="h-4 w-4" />}
+              <span>{isSaved ? t('watch.unsave') : t('watch.save')}</span>
+            </button>
+            <a
+              href={reportHref}
+              title={t('watch.reportTitle')}
+              className="inline-flex min-h-10 items-center gap-2 rounded-xl border border-white/10 bg-white/[0.03] px-3.5 py-2 text-sm font-medium text-gray-300 transition-all duration-200 hover:-translate-y-0.5 hover:border-pink-300/30 hover:text-pink-200 active:scale-95 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-neon-300"
+            >
+              <Mail className="h-4 w-4" />
+              <span>{t('watch.report')}</span>
+            </a>
+          </div>
+          <p className="text-xs leading-relaxed text-gray-500">{t('watch.localPreferenceNote')}</p>
+          {actionFeedback && (
+            <p aria-live="polite" className="text-sm text-neon-200">
+              {actionFeedback}
+            </p>
+          )}
+          {subscriptionError && (
+            <p role="alert" className="text-sm text-red-300">{subscriptionError || t('watch.connectionError')}</p>
+          )}
+          {channelError && <p role="alert" className="text-sm text-red-300">{channelError}</p>}
 
           <p className="rounded-2xl border border-white/[0.06] bg-white/[0.025] p-5 text-sm leading-relaxed text-gray-300">
             {video.description}

@@ -34,7 +34,7 @@ const sections = [
           <li><strong>Hesap bilgileri:</strong> Kullanıcı adı, e-posta adresi ve hesap kimliği.</li>
           <li><strong>Profil bilgileri:</strong> Profil fotoğrafı ve hesap oluşturma/güncelleme zamanları.</li>
           <li><strong>Video bilgileri:</strong> Video başlığı, açıklaması, dosya konumu, dosya boyutu, dosya türü ve yüklenme zamanı.</li>
-          <li><strong>Etkileşim bilgileri:</strong> Clips beğenileri, yorumları ve kanal abonelikleri.</li>
+          <li><strong>Etkileşim bilgileri:</strong> Clips beğenileri, yorumları ve kanal bağlantıları. Uzun videolardaki beğeni, yorum, beğenmeme ve kaydetme tercihleri yalnızca kullandığınız tarayıcıda saklanır.</li>
           <li><strong>İzlenme bilgileri:</strong> İzlenen video, izlenme zamanı ve giriş yapmış kullanıcılar için kullanıcı kimliği.</li>
         </ul>
         <p>
@@ -52,7 +52,7 @@ const sections = [
         <ul>
           <li>Kullanıcı hesaplarının oluşturulması ve yönetilmesi.</li>
           <li>Video yükleme ve görüntüleme özelliklerinin çalıştırılması.</li>
-          <li>Beğeni, yorum ve abonelik işlemlerinin gerçekleştirilmesi.</li>
+          <li>Beğeni, yorum ve kanal bağlantısı işlemlerinin gerçekleştirilmesi.</li>
           <li>Video izlenme sayılarının hesaplanması.</li>
           <li>Platform güvenliğinin ve işleyişinin desteklenmesi.</li>
         </ul>
