@@ -171,6 +171,32 @@ export async function fetchVideosByOwner(ownerId: string): Promise<Video[]> {
   return videos.map(mapVideoRow);
 }
 
+export async function fetchVideoById(videoId: string): Promise<Video | null> {
+  const client = requireSupabase();
+  const { data, error } = await client
+    .from('videos')
+    .select(`${VIDEO_FIELDS}, video_type`)
+    .eq('id', videoId)
+    .maybeSingle();
+
+  if (error) {
+    if (!isVideoTypeColumnMissing(error)) throw error;
+    const legacy = await client
+      .from('videos')
+      .select(VIDEO_FIELDS)
+      .eq('id', videoId)
+      .maybeSingle();
+    if (legacy.error) throw legacy.error;
+    if (!legacy.data) return null;
+    if (!isVideoRow(legacy.data)) throw new Error('Unexpected video data.');
+    return mapVideoRow(legacy.data);
+  }
+
+  if (!data) return null;
+  if (!isVideoRow(data)) throw new Error('Unexpected video data.');
+  return mapVideoRow(data);
+}
+
 export async function fetchOwnVideos(ownerId: string): Promise<Video[]> {
   return fetchVideosByOwner(ownerId);
 }

@@ -139,18 +139,18 @@ export function FeedPage({
       {isHome && (
         <footer className="mt-5 flex flex-col items-center justify-between gap-3 border-t border-white/[0.08] pt-5 text-xs text-gray-500 sm:flex-row">
           <span>© IRONSS</span>
-          <nav aria-label="Yasal bilgiler" className="flex flex-wrap items-center justify-center gap-x-5 gap-y-2">
+          <nav aria-label={t('feed.legalNavigation')} className="flex flex-wrap items-center justify-center gap-x-5 gap-y-2">
             <a
               href="/privacy-policy"
               className="rounded-md transition-colors hover:text-neon-200"
             >
-              Gizlilik Politikası
+              {t('feed.privacyPolicy')}
             </a>
             <a
               href="/terms"
               className="rounded-md transition-colors hover:text-neon-200"
             >
-              Kullanım Şartları
+              {t('feed.termsOfUse')}
             </a>
           </nav>
         </footer>

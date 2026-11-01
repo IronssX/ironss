@@ -1,10 +1,12 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { Bookmark, Clock3, Heart } from 'lucide-react';
 import { VideoCard } from '@/components/VideoCard';
 import { useLanguage } from '@/hooks/useLanguage';
+import { useAuth } from '@/hooks/useAuth';
 import type { Video } from '@/types/video';
-import { getLikedVideoIds } from '@/utils/likeStorage';
 import { getSavedVideoIds } from '@/utils/videoLocalPreferences';
+import { fetchOwnVideoLikeIds } from '@/services/videoLikeService';
+import { logSupabaseFailure } from '@/utils/supabaseDiagnostics';
 
 interface LibraryPageProps {
   videos: Video[];
@@ -22,8 +24,41 @@ const SECTIONS: { id: LibrarySection; icon: typeof Heart; labelKey: 'library.lik
 
 export function LibraryPage({ videos, onSelectVideo, onOpenChannel }: LibraryPageProps) {
   const { t } = useLanguage();
+  const { user } = useAuth();
+  const userId = user?.id ?? null;
   const [section, setSection] = useState<LibrarySection>('liked');
-  const likedIds = getLikedVideoIds();
+  const [accountLikedIds, setAccountLikedIds] = useState<string[]>([]);
+  const [likesFailed, setLikesFailed] = useState(false);
+  const [retryCount, setRetryCount] = useState(0);
+
+  useEffect(() => {
+    let isCurrent = true;
+    if (!userId) {
+      setAccountLikedIds([]);
+      setLikesFailed(false);
+      return () => {
+        isCurrent = false;
+      };
+    }
+
+    setAccountLikedIds([]);
+    setLikesFailed(false);
+    fetchOwnVideoLikeIds(userId)
+      .then((ids) => {
+        if (isCurrent) setAccountLikedIds(ids);
+      })
+      .catch((error: unknown) => {
+        if (!isCurrent) return;
+        logSupabaseFailure('video-likes', 'fetchOwnLikedVideoIds', error);
+        setLikesFailed(true);
+      });
+
+    return () => {
+      isCurrent = false;
+    };
+  }, [retryCount, userId]);
+
+  const likedIds = accountLikedIds;
   const likedVideos = videos.filter((video) => likedIds.includes(video.id));
   const savedIds = getSavedVideoIds();
   const savedVideos = videos.filter((video) => savedIds.includes(video.id));
@@ -57,6 +92,15 @@ export function LibraryPage({ videos, onSelectVideo, onOpenChannel }: LibraryPag
           );
         })}
       </nav>
+
+      {likesFailed && (
+        <p role="alert" className="rounded-xl border border-red-500/30 bg-red-500/[0.06] px-4 py-3 text-sm text-red-200">
+          {t('library.likesLoadError')}{' '}
+          <button type="button" onClick={() => setRetryCount((count) => count + 1)} className="font-semibold underline underline-offset-2">
+            {t('library.retry')}
+          </button>
+        </p>
+      )}
 
       {section === 'liked' ? (
         likedVideos.length > 0 ? (

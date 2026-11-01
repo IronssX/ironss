@@ -1,5 +1,5 @@
 import { Library, Users } from 'lucide-react';
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { Sidebar } from '@/components/Sidebar';
 import { TopBar } from '@/components/TopBar';
 import { useUploadedVideos } from '@/hooks/useUploadedVideos';
@@ -17,29 +17,53 @@ import { ShortsPage } from '@/pages/ShortsPage';
 import { SettingsPage } from '@/pages/SettingsPage';
 import { UploadChoicePage } from '@/pages/UploadChoicePage';
 import { NotificationsPage } from '@/pages/NotificationsPage';
+import { SubscriptionsPage } from '@/pages/SubscriptionsPage';
+import { LoadingSpinner } from '@/components/LoadingSpinner';
 import type { Page } from '@/types/navigation';
 import type { CategoryFilter, Video } from '@/types/video';
 import { useLanguage } from '@/hooks/useLanguage';
 import { useAuth } from '@/hooks/useAuth';
 import { useNotifications } from '@/hooks/useNotifications';
+import { fetchVideoById } from '@/services/videoService';
+import { logSupabaseFailure } from '@/utils/supabaseDiagnostics';
+
+interface RouteLocation {
+  page: Page;
+  videoId: string | null;
+  channelId: string | null;
+}
+
+const routablePages = new Set<string>([
+  'home', 'explore', 'shorts', 'subscriptions', 'library', 'notifications',
+  'watch', 'login', 'register', 'profile', 'upload-choice', 'upload',
+  'shorts-upload', 'channel', 'studio', 'settings',
+]);
+
+function getRouteLocation(): RouteLocation {
+  const params = new URLSearchParams(window.location.search);
+  const videoId = params.get('video');
+  const channelId = params.get('channel');
+  if (videoId) return { page: 'watch', videoId, channelId: null };
+  if (channelId) return { page: 'channel', videoId: null, channelId };
+  const requestedPage = params.get('page');
+  return {
+    page: requestedPage && routablePages.has(requestedPage) ? requestedPage as Page : 'home',
+    videoId: null,
+    channelId: null,
+  };
+}
 
 function App() {
   const { t } = useLanguage();
   const { user } = useAuth();
   const notificationState = useNotifications(user?.id ?? null);
-  const [page, setPage] = useState<Page>(() => {
-    const params = new URLSearchParams(window.location.search);
-    if (params.has('video')) return 'watch';
-    if (params.has('channel')) return 'channel';
-    return 'home';
-  });
-  const [selectedVideoId, setSelectedVideoId] = useState<string | null>(
-    () => new URLSearchParams(window.location.search).get('video'),
-  );
+  const [initialRoute] = useState(getRouteLocation);
+  const [page, setPage] = useState<Page>(initialRoute.page);
+  const [selectedVideoId, setSelectedVideoId] = useState<string | null>(initialRoute.videoId);
   const [selectedVideoOverride, setSelectedVideoOverride] = useState<Video | null>(null);
-  const [selectedChannelId, setSelectedChannelId] = useState<string | null>(
-    () => new URLSearchParams(window.location.search).get('channel'),
-  );
+  const [isSelectedVideoLoading, setIsSelectedVideoLoading] = useState(initialRoute.videoId !== null);
+  const [selectedVideoLoadFailed, setSelectedVideoLoadFailed] = useState(false);
+  const [selectedChannelId, setSelectedChannelId] = useState<string | null>(initialRoute.channelId);
   const [query, setQuery] = useState('');
   const [category, setCategory] = useState<CategoryFilter>('All');
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
@@ -47,6 +71,7 @@ function App() {
   const {
     videos: uploadedVideos,
     shorts: uploadedShorts,
+    isLoading: isVideosLoading,
     shortsSchemaMissing,
     error: uploadsError,
     refresh: refreshUploads,
@@ -81,34 +106,92 @@ function App() {
     ? selectedVideoOverride
     : allUploadedVideos.find((video) => video.id === selectedVideoId) ?? null;
 
+  useEffect(() => {
+    if (page !== 'watch' || !selectedVideoId) {
+      setIsSelectedVideoLoading(false);
+      setSelectedVideoLoadFailed(false);
+      return;
+    }
+    if (selectedVideo) {
+      setIsSelectedVideoLoading(false);
+      setSelectedVideoLoadFailed(false);
+      return;
+    }
+    if (isVideosLoading) return;
+
+    let isCurrent = true;
+    setIsSelectedVideoLoading(true);
+    setSelectedVideoLoadFailed(false);
+    fetchVideoById(selectedVideoId)
+      .then((video) => {
+        if (!isCurrent) return;
+        if (video) {
+          setSelectedVideoOverride(video);
+        } else {
+          setSelectedVideoLoadFailed(true);
+        }
+      })
+      .catch((error: unknown) => {
+        if (!isCurrent) return;
+        logSupabaseFailure('videos', 'fetchVideoById', error);
+        setSelectedVideoLoadFailed(true);
+      })
+      .finally(() => {
+        if (isCurrent) setIsSelectedVideoLoading(false);
+      });
+
+    return () => {
+      isCurrent = false;
+    };
+  }, [isVideosLoading, page, selectedVideo, selectedVideoId]);
+
   const scrollToTop = () => window.scrollTo({ top: 0, behavior: 'smooth' });
 
-  const navigate = (nextPage: Page) => {
-    const currentUrl = new URL(window.location.href);
-    if (nextPage !== 'watch') currentUrl.searchParams.delete('video');
-    if (nextPage !== 'channel') currentUrl.searchParams.delete('channel');
-    window.history.replaceState(window.history.state, '', currentUrl);
+  const navigate = (nextPage: Page, target?: { videoId?: string; channelId?: string }) => {
+    const nextUrl = new URL(window.location.href);
+    nextUrl.searchParams.delete('video');
+    nextUrl.searchParams.delete('channel');
+    nextUrl.searchParams.delete('page');
+    if (nextPage === 'watch' && target?.videoId) {
+      nextUrl.searchParams.set('video', target.videoId);
+    } else if (nextPage === 'channel' && target?.channelId) {
+      nextUrl.searchParams.set('channel', target.channelId);
+    } else if (nextPage !== 'home') {
+      nextUrl.searchParams.set('page', nextPage);
+    }
+    if (nextUrl.href !== window.location.href) {
+      window.history.pushState({ page: nextPage }, '', nextUrl);
+    }
     setPage(nextPage);
     setIsSidebarOpen(false);
     scrollToTop();
   };
 
+  useEffect(() => {
+    const handlePopState = () => {
+      const route = getRouteLocation();
+      setPage(route.page);
+      setSelectedVideoId(route.videoId);
+      setSelectedVideoOverride(null);
+      setIsSelectedVideoLoading(route.videoId !== null);
+      setSelectedVideoLoadFailed(false);
+      setSelectedChannelId(route.channelId);
+      setIsSidebarOpen(false);
+      scrollToTop();
+    };
+    window.addEventListener('popstate', handlePopState);
+    return () => window.removeEventListener('popstate', handlePopState);
+  }, []);
+
   const openVideo = (videoId: string, video?: Video) => {
     setSelectedVideoId(videoId);
     setSelectedVideoOverride(video ?? null);
-    const videoUrl = new URL(window.location.href);
-    videoUrl.searchParams.set('video', videoId);
-    window.history.replaceState(window.history.state, '', videoUrl);
-    navigate('watch');
+    navigate('watch', { videoId });
   };
 
   const openChannel = (channelId: string) => {
     setSelectedChannelId(channelId);
-    const channelUrl = new URL(window.location.href);
-    channelUrl.searchParams.delete('video');
-    channelUrl.searchParams.set('channel', channelId);
-    window.history.replaceState(window.history.state, '', channelUrl);
-    navigate('channel');
+    navigate('channel', { channelId });
   };
 
   const handleQueryChange = (value: string) => {
@@ -173,15 +256,7 @@ function App() {
       case 'profile':
         return <ProfilePage onNavigate={navigate} onOpenChannel={openChannel} />;
       case 'subscriptions':
-        return (
-          <PlaceholderPage
-            icon={Users}
-            title={t('placeholder.subscriptionsTitle')}
-            message={t('placeholder.subscriptionsMessage')}
-            actionLabel={t('placeholder.backHome')}
-            onAction={() => navigate('home')}
-          />
-        );
+        return <SubscriptionsPage onNavigate={navigate} onOpenChannel={openChannel} />;
       case 'library':
         return <LibraryPage videos={allVideos} onSelectVideo={openVideo} onOpenChannel={openChannel} />;
       case 'notifications':
@@ -239,15 +314,25 @@ function App() {
           />
         );
       case 'watch':
+        if (isSelectedVideoLoading) {
+          return <LoadingSpinner label={t('loading.video')} />;
+        }
         if (!selectedVideo) {
           return (
-            <PlaceholderPage
-              icon={Library}
-              title={t('placeholder.videoMissingTitle')}
-              message={t('placeholder.videoMissingMessage')}
-              actionLabel={t('placeholder.backHome')}
-              onAction={() => navigate('home')}
-            />
+            <div className="flex flex-col gap-4">
+              {selectedVideoLoadFailed && (
+                <p role="alert" className="rounded-lg border border-red-500/40 bg-red-500/10 px-4 py-3 text-sm text-red-200">
+                  {t('videos.fetchFailed')}
+                </p>
+              )}
+              <PlaceholderPage
+                icon={Library}
+                title={t('placeholder.videoMissingTitle')}
+                message={t('placeholder.videoMissingMessage')}
+                actionLabel={t('placeholder.backHome')}
+                onAction={() => navigate('home')}
+              />
+            </div>
           );
         }
         return (

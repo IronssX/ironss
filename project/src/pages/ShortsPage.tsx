@@ -194,10 +194,10 @@ export function ShortsPage({ videos, schemaMissing, onNavigate, onOpenChannel }:
       if (target instanceof HTMLElement && (target.isContentEditable || ['INPUT', 'TEXTAREA', 'SELECT'].includes(target.tagName))) return;
       if (event.key === 'ArrowUp') {
         event.preventDefault();
-        navigateVideo(1);
+        navigateVideo(-1);
       } else if (event.key === 'ArrowDown') {
         event.preventDefault();
-        navigateVideo(-1);
+        navigateVideo(1);
       } else if (event.key === ' ') {
         event.preventDefault();
         setIsPlaying((playing) => !playing);

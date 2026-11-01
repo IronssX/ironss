@@ -2,6 +2,7 @@ import { useEffect, useRef, useState, type ChangeEvent, type FormEvent } from 'r
 import { CheckCircle2, Film, ImagePlus, Upload } from 'lucide-react';
 import { AuthCard } from '@/components/AuthCard';
 import { FormField } from '@/components/FormField';
+import { LoadingSpinner } from '@/components/LoadingSpinner';
 import { VIDEO_UPLOAD_LIMITS } from '@/config/videoUploads';
 import { useAuth } from '@/hooks/useAuth';
 import { uploadVideo } from '@/services/videoService';
@@ -51,7 +52,7 @@ export function UploadPage({ onNavigate, onUploaded, videoType, shortsSchemaMiss
     return () => URL.revokeObjectURL(previewUrl);
   }, [values.thumbnailFile]);
 
-  if (isLoading) return null;
+  if (isLoading) return <LoadingSpinner label={t('loading.account')} />;
 
   if (!user) {
     return (

@@ -19,6 +19,8 @@ import { useAuth } from '@/hooks/useAuth';
 import { useLanguage } from '@/hooks/useLanguage';
 import type { TranslationKey } from '@/i18n';
 import { fetchOwnDailyVideoViews, fetchOwnVideos, type DailyVideoViews } from '@/services/videoService';
+import { fetchOwnVideoLikeCount } from '@/services/videoLikeService';
+import { logSupabaseFailure } from '@/utils/supabaseDiagnostics';
 import { fetchSubscriberCount } from '@/services/channelService';
 import type { Page } from '@/types/navigation';
 import type { Video, VideoType } from '@/types/video';
@@ -44,6 +46,7 @@ export function CreatorStudioPage({ onNavigate, onSelectVideo }: CreatorStudioPa
   const [section, setSection] = useState<StudioSection>('overview');
   const [videos, setVideos] = useState<Video[]>([]);
   const [subscriberCount, setSubscriberCount] = useState<number | null>(null);
+  const [likeCount, setLikeCount] = useState<number | null>(null);
   const [dailyViews, setDailyViews] = useState<DailyVideoViews[] | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [videosFailed, setVideosFailed] = useState(false);
@@ -57,7 +60,8 @@ export function CreatorStudioPage({ onNavigate, onSelectVideo }: CreatorStudioPa
       fetchOwnVideos(user.id),
       fetchSubscriberCount(user.id),
       fetchOwnDailyVideoViews(),
-    ]).then(([videosResult, subscriberResult, dailyResult]) => {
+      fetchOwnVideoLikeCount(),
+    ]).then(([videosResult, subscriberResult, dailyResult, likesResult]) => {
       if (!isCurrent) return;
 
       if (videosResult.status === 'fulfilled') {
@@ -70,6 +74,10 @@ export function CreatorStudioPage({ onNavigate, onSelectVideo }: CreatorStudioPa
 
       setSubscriberCount(subscriberResult.status === 'fulfilled' ? subscriberResult.value : null);
       setDailyViews(dailyResult.status === 'fulfilled' ? dailyResult.value : null);
+      if (likesResult.status === 'rejected') {
+        logSupabaseFailure('creator-studio', 'fetchOwnVideoLikeCount', likesResult.reason);
+      }
+      setLikeCount(likesResult.status === 'fulfilled' ? likesResult.value : null);
       setIsLoading(false);
     });
 
@@ -138,6 +146,7 @@ export function CreatorStudioPage({ onNavigate, onSelectVideo }: CreatorStudioPa
               videos={ownVideos}
               totalViews={totalViews}
               subscriberCount={subscriberCount}
+              likeCount={likeCount}
               language={language}
               t={t}
               onSelectVideo={onSelectVideo}
@@ -180,6 +189,7 @@ interface OverviewSectionProps extends SectionTranslationProps {
   videos: Video[];
   totalViews: number;
   subscriberCount: number | null;
+  likeCount: number | null;
   language: 'tr' | 'en';
   onSelectVideo: (videoId: string) => void;
   onShowAll: () => void;
@@ -190,6 +200,7 @@ function OverviewSection({
   videos,
   totalViews,
   subscriberCount,
+  likeCount,
   language,
   t,
   onSelectVideo,
@@ -200,7 +211,7 @@ function OverviewSection({
     { label: t('studio.metricVideos'), value: formatExactCount(videos.length, language), detail: null, icon: VideoIcon },
     { label: t('studio.metricViews'), value: formatExactCount(totalViews, language), detail: null, icon: Eye },
     { label: t('studio.metricSubscribers'), value: subscriberCount === null ? '—' : formatExactCount(subscriberCount, language), detail: subscriberCount === null ? t('studio.metricUnavailable') : null, icon: Users },
-    { label: t('studio.metricLikes'), value: '—', detail: t('studio.notTracked'), icon: Heart },
+    { label: t('studio.metricLikes'), value: likeCount === null ? '—' : formatExactCount(likeCount, language), detail: likeCount === null ? t('studio.metricUnavailable') : null, icon: Heart },
     { label: t('studio.metricComments'), value: '—', detail: t('studio.notTracked'), icon: MessageSquare },
   ];
 

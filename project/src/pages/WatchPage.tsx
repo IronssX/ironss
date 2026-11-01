@@ -45,19 +45,31 @@ export function WatchPage({ video, relatedVideos, onBack, onSelectVideo, onOpenC
   };
   const channelId = video.ownerId;
   const { channel, error: channelError, isSubscriptionBusy, subscriptionError, toggleSubscription } = useChannel(channelId ?? '');
-  const { isLiked, toggleLike } = useVideoLike(video.id);
+  const {
+    likeCount,
+    isLiked,
+    isLoading: isLikeLoading,
+    isBusy: isLikeBusy,
+    hasError: likeError,
+    toggleLike,
+  } = useVideoLike(video.id);
   const { isDisliked, isSaved, toggleDislike, clearDislike, toggleSaved } = useVideoLocalPreferences(video.id);
   const shareUrl = new URL(window.location.href);
   shareUrl.searchParams.set('video', video.id);
   const openChannel = () => {
     if (channelId) onOpenChannel(channelId);
   };
-  const handleLike = () => {
+  const handleLike = async () => {
+    if (!user) {
+      onNavigate('login');
+      return;
+    }
+    if (likeError) return;
     if (!isLiked && isDisliked) clearDislike();
-    toggleLike();
+    await toggleLike();
   };
-  const handleDislike = () => {
-    if (!isDisliked && isLiked) toggleLike();
+  const handleDislike = async () => {
+    if (!isDisliked && isLiked && !(await toggleLike())) return;
     const saved = toggleDislike();
     setActionFeedback(saved ? t('watch.preferenceSaved') : t('watch.preferenceSaveFailed'));
   };
@@ -178,7 +190,12 @@ export function WatchPage({ video, relatedVideos, onBack, onSelectVideo, onOpenC
           </div>
 
           <div className="flex flex-wrap items-center gap-2" aria-label={t('watch.videoActions')}>
-            <LikeButton baseLikes={video.likes} isLiked={isLiked} onToggle={handleLike} />
+            <LikeButton
+              likeCount={likeCount}
+              isLiked={isLiked}
+              onToggle={() => void handleLike()}
+              disabled={isLikeLoading || isLikeBusy || likeError}
+            />
             <button
               type="button"
               onClick={handleDislike}
@@ -218,6 +235,9 @@ export function WatchPage({ video, relatedVideos, onBack, onSelectVideo, onOpenC
               <span>{t('watch.report')}</span>
             </a>
           </div>
+          {likeError && (
+            <p role="alert" className="text-sm text-red-300">{t('watch.likeUnavailable')}</p>
+          )}
           <p className="text-xs leading-relaxed text-gray-500">{t('watch.localPreferenceNote')}</p>
           {actionFeedback && (
             <p aria-live="polite" className="text-sm text-neon-200">

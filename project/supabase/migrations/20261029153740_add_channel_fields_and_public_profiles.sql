@@ -18,7 +18,7 @@ BEGIN
     SELECT 1 FROM pg_constraint
     WHERE conname = 'profiles_channel_description_length'
       AND conrelid = 'public.profiles'::regclass
-  ) THENA
+  ) THEN
     ALTER TABLE public.profiles
       ADD CONSTRAINT profiles_channel_description_length
       CHECK (channel_description IS NULL OR char_length(channel_description) <= 500);
