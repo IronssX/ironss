@@ -64,7 +64,7 @@ export function Sidebar({ activePage, isOpen, onNavigate, onClose }: SidebarProp
       />
 
       <aside
-        className={`fixed bottom-0 left-0 top-0 z-50 flex w-[min(84vw,19rem)] flex-col border-r border-white/[0.07] bg-[#101014] px-4 pb-6 pt-5 transition-transform duration-300 ease-out md:sticky md:top-[76px] md:z-20 md:h-[calc(100vh-76px)] md:w-[248px] md:shrink-0 md:translate-x-0 md:border-r-0 md:bg-transparent md:px-4 md:pt-7 ${
+        className={`fixed bottom-0 left-0 top-0 z-50 flex w-[min(84vw,19rem)] flex-col border-r border-white/[0.07] bg-[#101014] px-4 pb-6 pt-5 transition-transform duration-300 ease-out md:fixed md:top-[76px] md:z-20 md:h-[calc(100dvh-76px)] md:w-[248px] md:shrink-0 md:translate-x-0 md:border-r md:border-white/[0.06] md:bg-[#0b0a10]/90 md:px-4 md:pt-7 ${
           isOpen ? 'translate-x-0' : '-translate-x-full'
         }`}
       >

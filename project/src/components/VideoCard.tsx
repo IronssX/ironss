@@ -24,13 +24,13 @@ export function VideoCard({ video, onSelect, onOpenChannel }: VideoCardProps) {
   );
 
   return (
-    <article className="video-card group flex w-full animate-fade-in flex-col rounded-2xl">
+    <article className="video-card group flex w-full animate-fade-in flex-col rounded-[22px]">
       <button
         type="button"
         onClick={() => onSelect(video.id)}
-        className="flex w-full flex-col rounded-2xl text-left focus-visible:outline focus-visible:outline-2 focus-visible:outline-neon-400"
+        className="flex w-full flex-col rounded-[22px] text-left focus-visible:outline focus-visible:outline-2 focus-visible:outline-neon-400"
       >
-        <div className="video-card-media relative aspect-video w-full overflow-hidden rounded-2xl border border-white/[0.08] bg-surface-raised transition-all duration-300 group-hover:-translate-y-1 group-hover:border-neon-300/25 group-hover:shadow-[0_18px_42px_-20px_rgba(176,38,255,.65)]">
+        <div className="video-card-media relative aspect-video w-full overflow-hidden rounded-[22px] border border-white/[0.08] bg-surface-raised transition-all duration-300 group-hover:-translate-y-1 group-hover:border-neon-300/25 group-hover:shadow-[0_18px_42px_-20px_rgba(176,38,255,.65)]">
           <Thumbnail
             src={video.thumbnailUrl}
             alt={t('video.thumbnailAlt', { title: video.title })}

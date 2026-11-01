@@ -19,7 +19,7 @@ export function TopBar({ query, onQueryChange, onToggleSidebar, onGoHome, onNavi
   const { language, setLanguage, t } = useLanguage();
 
   return (
-    <header className="fixed inset-x-0 top-0 z-30 h-[76px] border-b border-white/[0.06] bg-[#0c0c10]/85 backdrop-blur-2xl">
+    <header className="topbar-shell fixed inset-x-0 top-0 z-30 h-[76px] border-b border-white/[0.06] bg-[#0a0910]/90 backdrop-blur-2xl">
       <div className="flex h-full items-center gap-2.5 px-3 sm:gap-4 sm:px-6 lg:px-8">
         <button
           type="button"

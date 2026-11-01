@@ -32,13 +32,25 @@ interface ShortsPageProps {
   schemaMissing: boolean;
   onNavigate: (page: Page) => void;
   onOpenChannel: (channelId: string) => void;
+  exitPage?: Page;
+  initialVideoId?: string | null;
 }
 
-export function ShortsPage({ videos, schemaMissing, onNavigate, onOpenChannel }: ShortsPageProps) {
+export function ShortsPage({
+  videos,
+  schemaMissing,
+  onNavigate,
+  onOpenChannel,
+  exitPage = 'home',
+  initialVideoId = null,
+}: ShortsPageProps) {
   const { language, t } = useLanguage();
   const { user } = useAuth();
   const { shortsStartMuted } = useSettings();
-  const [activeIndex, setActiveIndex] = useState(0);
+  const [activeIndex, setActiveIndex] = useState(() => {
+    const initialIndex = initialVideoId ? videos.findIndex((video) => video.id === initialVideoId) : 0;
+    return initialIndex >= 0 ? initialIndex : 0;
+  });
   const [isMuted, setIsMuted] = useState(shortsStartMuted);
   const [volume, setVolume] = useState(1);
   const [isPlaying, setIsPlaying] = useState(true);
@@ -79,6 +91,12 @@ export function ShortsPage({ videos, schemaMissing, onNavigate, onOpenChannel }:
     toggleSubscription,
   } = useChannel(activeVideo?.ownerId ?? '');
   const isOwnChannel = Boolean(user && activeVideo?.ownerId === user.id);
+  useEffect(() => {
+    if (!initialVideoId) return;
+    const initialIndex = videos.findIndex((video) => video.id === initialVideoId);
+    if (initialIndex >= 0) setActiveIndex(initialIndex);
+  }, [initialVideoId, videos]);
+
   useEffect(() => {
     if (showComments) {
       if (commentsUnmountTimer.current !== null) {
@@ -204,7 +222,7 @@ export function ShortsPage({ videos, schemaMissing, onNavigate, onOpenChannel }:
       } else if (event.key.toLowerCase() === 'm') {
         setIsMuted((muted) => !muted);
       } else if (event.key === 'Escape') {
-        onNavigate('home');
+        onNavigate(exitPage);
       }
     };
     window.addEventListener('wheel', handleWheel, { passive: false });
@@ -213,9 +231,13 @@ export function ShortsPage({ videos, schemaMissing, onNavigate, onOpenChannel }:
       window.removeEventListener('wheel', handleWheel);
       window.removeEventListener('keydown', handleKeyDown);
     };
-  }, [navigateVideo, onNavigate]);
+  }, [exitPage, navigateVideo, onNavigate]);
 
   const handleTouchStart = (event: TouchEvent<HTMLElement>) => {
+    if (event.target instanceof HTMLElement && event.target.closest('[data-shorts-comments]')) {
+      touchStartRef.current = null;
+      return;
+    }
     touchStartRef.current = event.changedTouches[0]?.clientY ?? null;
   };
 
@@ -248,8 +270,8 @@ export function ShortsPage({ videos, schemaMissing, onNavigate, onOpenChannel }:
 
   if (!activeVideo) {
     return (
-      <div className="shorts-empty fixed inset-0 z-[60] flex flex-col items-center justify-center px-6 text-center">
-        <button type="button" onClick={() => onNavigate('home')} aria-label={t('shorts.close')} className="absolute right-5 top-5 flex h-11 w-11 items-center justify-center rounded-full border border-white/10 bg-white/5 text-white">
+      <div className="shorts-empty fixed inset-0 z-[60] flex flex-col items-center justify-center px-6 text-center md:relative md:inset-auto md:z-auto md:min-h-[calc(100dvh-132px)] md:rounded-3xl">
+        <button type="button" onClick={() => onNavigate(exitPage)} aria-label={t('shorts.close')} className="absolute right-5 top-5 flex h-11 w-11 items-center justify-center rounded-full border border-white/10 bg-white/5 text-white">
           <X className="h-5 w-5" />
         </button>
         <Clapperboard className="h-10 w-10 text-neon-200" />
@@ -260,8 +282,18 @@ export function ShortsPage({ videos, schemaMissing, onNavigate, onOpenChannel }:
           {t(schemaMissing ? 'shorts.migrationRequired' : 'shorts.emptyDescription')}
         </p>
         {!schemaMissing && (
-          <button type="button" onClick={() => onNavigate(user ? 'shorts-upload' : 'login')} className="primary-button mt-6 h-11 px-5">
-            {t('shorts.create')}
+          <div className="mt-6 flex flex-wrap justify-center gap-3">
+            <button type="button" onClick={() => onNavigate(user ? 'shorts-upload' : 'login')} className="primary-button h-11 px-5">
+              {t('shorts.create')}
+            </button>
+            <button type="button" onClick={() => onNavigate('explore')} className="ghost-button h-11 px-5">
+              {t('feed.exploreAction')}
+            </button>
+          </div>
+        )}
+        {schemaMissing && (
+          <button type="button" onClick={() => onNavigate('explore')} className="ghost-button mt-6 h-11 px-5">
+            {t('feed.exploreAction')}
           </button>
         )}
       </div>
@@ -270,7 +302,7 @@ export function ShortsPage({ videos, schemaMissing, onNavigate, onOpenChannel }:
 
   return (
     <main
-      className="shorts-stage fixed inset-0 z-[60] flex items-center justify-center overflow-hidden bg-[#09080d] px-3 py-3 sm:px-8"
+      className="shorts-stage fixed inset-0 z-[60] flex h-[100dvh] items-center justify-center overflow-hidden bg-[#09080d] px-0 py-0 md:relative md:inset-auto md:z-auto md:h-auto md:min-h-[calc(100dvh-132px)] md:bg-transparent"
       onTouchStart={handleTouchStart}
       onTouchEnd={handleTouchEnd}
     >
@@ -279,12 +311,12 @@ export function ShortsPage({ videos, schemaMissing, onNavigate, onOpenChannel }:
         <Clapperboard className="h-4 w-4 text-neon-200" />
         IRONSS / CLIPS
       </div>
-      <button type="button" onClick={() => onNavigate('home')} aria-label={t('shorts.close')} className="absolute right-4 top-4 z-30 flex h-10 w-10 items-center justify-center rounded-full border border-white/10 bg-black/35 text-white/80 backdrop-blur-md transition-colors hover:bg-white/10 hover:text-white sm:right-6 sm:top-5">
+      <button type="button" onClick={() => onNavigate(exitPage)} aria-label={t('shorts.close')} className="absolute right-4 top-4 z-30 flex h-10 w-10 items-center justify-center rounded-full border border-white/10 bg-black/35 text-white/80 backdrop-blur-md transition-colors hover:bg-white/10 hover:text-white sm:right-6 sm:top-5">
         <X className="h-5 w-5" />
       </button>
 
-      <div className="relative flex h-full max-h-[min(92dvh,900px)] w-full max-w-[500px] items-center justify-center gap-3 sm:gap-4">
-        <div className="shorts-player-shell relative h-full max-h-[min(92dvh,900px)] w-auto aspect-[9/16] max-w-[calc(100vw-32px)] overflow-hidden rounded-[26px] border border-white/10 bg-[#15121a] shadow-[0_30px_120px_-30px_rgba(114,58,150,.48)] sm:rounded-[30px]">
+      <div className="relative z-10 flex h-full w-full items-center justify-center gap-3 md:h-auto md:w-auto sm:gap-4">
+        <div className="shorts-player-shell relative h-full w-full max-w-none overflow-hidden rounded-none border-0 bg-[#15121a] shadow-none md:h-[min(calc(100dvh-168px),860px)] md:w-auto md:aspect-[9/16] md:max-w-[min(500px,calc(100vw-390px))] md:rounded-[30px] md:border md:border-white/10 md:shadow-[0_30px_120px_-30px_rgba(114,58,150,.48)]">
           <video
             ref={videoRef}
             key={activeVideo.id}
@@ -295,7 +327,7 @@ export function ShortsPage({ videos, schemaMissing, onNavigate, onOpenChannel }:
             loop
             preload="metadata"
             aria-label={t('shorts.videoLabel', { title: activeVideo.title })}
-            className="absolute inset-0 h-full w-full object-contain"
+            className="absolute inset-0 h-full w-full object-cover"
             onClick={() => setIsPlaying((playing) => !playing)}
             onPlay={() => setIsPlaying(true)}
             onPause={() => setIsPlaying(false)}
@@ -414,7 +446,7 @@ export function ShortsPage({ videos, schemaMissing, onNavigate, onOpenChannel }:
       </div>
 
       {isCommentsMounted && (
-        <div data-shorts-comments data-state={isCommentsPanelOpen ? 'open' : 'closed'} aria-hidden={!isCommentsPanelOpen} className="clips-comments-panel absolute inset-x-3 bottom-3 z-30 max-h-[54dvh] overflow-y-auto rounded-2xl border border-white/10 bg-[#15131b]/95 p-4 shadow-2xl backdrop-blur-xl sm:inset-y-16 sm:left-auto sm:right-6 sm:w-[min(380px,calc(100vw-48px))] sm:max-h-[calc(100dvh-8rem)]">
+        <div data-shorts-comments data-state={isCommentsPanelOpen ? 'open' : 'closed'} aria-hidden={!isCommentsPanelOpen} className="clips-comments-panel absolute inset-x-3 bottom-3 z-30 max-h-[54dvh] overflow-y-auto rounded-2xl border border-white/10 bg-[#15131b]/95 p-4 shadow-2xl backdrop-blur-xl sm:inset-y-16 sm:left-auto sm:right-6 sm:w-[min(380px,calc(100vw-48px))] sm:max-h-[calc(100dvh-8rem)] md:inset-y-16 md:right-6">
           <div className="mb-4 flex items-center justify-between">
             <h2 className="text-sm font-semibold text-white">{t('shorts.comments')}</h2>
             <button type="button" onClick={() => setShowComments(false)} aria-label={t('shorts.closeComments')} className="icon-button h-8 w-8"><X className="h-4 w-4" /></button>

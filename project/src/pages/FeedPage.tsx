@@ -84,11 +84,35 @@ export function FeedPage({
         </section>
       )}
 
-      <div className="flex flex-col gap-1">
-        <p className="eyebrow">{isHome ? t('feed.latestLabel') : t('feed.exploreLabel')}</p>
-        <h2 className="mt-1 text-2xl font-semibold tracking-[-0.035em] text-white sm:text-[28px]">{title}</h2>
-        <p className="mt-1 text-sm text-gray-500">{description}</p>
-      </div>
+      {isHome ? (
+        <div className="flex flex-col gap-1">
+          <p className="eyebrow">{t('feed.latestLabel')}</p>
+          <h2 className="mt-1 text-2xl font-semibold tracking-[-0.035em] text-white sm:text-[28px]">{title}</h2>
+          <p className="mt-1 text-sm text-gray-500">{description}</p>
+        </div>
+      ) : (
+        <section className="discovery-hero relative isolate overflow-hidden rounded-[26px] border border-white/[0.08] px-5 py-6 sm:px-8 sm:py-8">
+          <div className="discovery-orb pointer-events-none absolute -right-20 -top-28 -z-10 h-80 w-80 rounded-full" />
+          <div className="relative flex flex-col justify-between gap-6 sm:flex-row sm:items-end">
+            <div className="max-w-2xl">
+              <span className="inline-flex items-center gap-2 rounded-full border border-neon-300/15 bg-neon-300/[0.07] px-3 py-1.5 text-[10px] font-bold uppercase tracking-[0.2em] text-neon-200">
+                <Sparkles className="h-3.5 w-3.5" />
+                {t('feed.exploreLabel')}
+              </span>
+              <h1 className="mt-4 text-3xl font-semibold tracking-[-0.045em] text-white sm:text-4xl">{title}</h1>
+              <p className="mt-2 max-w-xl text-sm leading-6 text-gray-400">{description}</p>
+            </div>
+            <div className="flex shrink-0 items-center gap-3 rounded-2xl border border-white/[0.08] bg-black/20 px-4 py-3">
+              <span className="flex h-10 w-10 items-center justify-center rounded-xl bg-neon-300/10 text-neon-200">
+                <Sparkles className="h-4 w-4" />
+              </span>
+              <span className="text-xs font-medium text-gray-300">
+                {t('feed.showingVideos', { shown: visibleVideos.length, total: videos.length })}
+              </span>
+            </div>
+          </div>
+        </section>
+      )}
 
       <CategoryChips
         selected={category}
@@ -108,7 +132,7 @@ export function FeedPage({
       </div>
 
       {visibleVideos.length > 0 ? (
-        <div className="grid grid-cols-1 gap-x-5 gap-y-9 sm:grid-cols-2 lg:grid-cols-3 2xl:grid-cols-4">
+        <div className="grid grid-cols-1 gap-x-5 gap-y-8 sm:grid-cols-2 lg:grid-cols-3 2xl:grid-cols-4">
           {visibleVideos.map((video) => (
             <VideoCard key={video.id} video={video} onSelect={onSelectVideo} onOpenChannel={onOpenChannel} />
           ))}

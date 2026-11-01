@@ -107,14 +107,14 @@ export async function fetchOwnDailyVideoViews(): Promise<DailyVideoViews[]> {
   });
 }
 
-export async function fetchVideos(videoType: VideoType): Promise<Video[]> {
+async function fetchVideosRange(videoType: VideoType, from: number, to: number): Promise<Video[]> {
   const client = requireSupabase();
   const { data, error } = await client
     .from('videos')
     .select(`${VIDEO_FIELDS}, video_type`)
     .eq('video_type', videoType)
     .order('created_at', { ascending: false })
-    .limit(100);
+    .range(from, to);
 
   if (error) {
     if (!isVideoTypeColumnMissing(error)) throw error;
@@ -124,7 +124,7 @@ export async function fetchVideos(videoType: VideoType): Promise<Video[]> {
       .from('videos')
       .select(VIDEO_FIELDS)
       .order('created_at', { ascending: false })
-      .limit(100);
+      .range(from, to);
     if (legacy.error) throw legacy.error;
     if (!Array.isArray(legacy.data) || !legacy.data.every(isVideoRow)) throw new Error('Unexpected video data.');
     return legacy.data.map(mapVideoRow);
@@ -133,6 +133,21 @@ export async function fetchVideos(videoType: VideoType): Promise<Video[]> {
   if (!Array.isArray(data) || !data.every(isVideoRow)) throw new Error('Unexpected video data.');
 
   return data.map(mapVideoRow);
+}
+
+export async function fetchVideos(videoType: VideoType): Promise<Video[]> {
+  return fetchVideosRange(videoType, 0, 99);
+}
+
+export async function fetchVideosPage(
+  videoType: VideoType,
+  offset: number,
+  pageSize: number,
+): Promise<Video[]> {
+  if (!Number.isSafeInteger(offset) || offset < 0 || !Number.isSafeInteger(pageSize) || pageSize < 1) {
+    throw new RangeError('Video page offset and size must be positive safe integers.');
+  }
+  return fetchVideosRange(videoType, offset, offset + pageSize - 1);
 }
 
 export async function fetchVideosByOwner(ownerId: string): Promise<Video[]> {

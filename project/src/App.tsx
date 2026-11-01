@@ -5,6 +5,7 @@ import { TopBar } from '@/components/TopBar';
 import { useUploadedVideos } from '@/hooks/useUploadedVideos';
 import { ChannelPage } from '@/pages/ChannelPage';
 import { FeedPage } from '@/pages/FeedPage';
+import { HomeFeedPage } from '@/pages/HomeFeedPage';
 import { LoginPage } from '@/pages/LoginPage';
 import { LibraryPage } from '@/pages/LibraryPage';
 import { PlaceholderPage } from '@/pages/PlaceholderPage';
@@ -31,6 +32,7 @@ interface RouteLocation {
   page: Page;
   videoId: string | null;
   channelId: string | null;
+  shortId: string | null;
 }
 
 const routablePages = new Set<string>([
@@ -43,13 +45,16 @@ function getRouteLocation(): RouteLocation {
   const params = new URLSearchParams(window.location.search);
   const videoId = params.get('video');
   const channelId = params.get('channel');
-  if (videoId) return { page: 'watch', videoId, channelId: null };
-  if (channelId) return { page: 'channel', videoId: null, channelId };
+  const shortId = params.get('clip');
+  if (videoId) return { page: 'watch', videoId, channelId: null, shortId: null };
+  if (channelId) return { page: 'channel', videoId: null, channelId, shortId: null };
+  if (shortId) return { page: 'shorts', videoId: null, channelId: null, shortId };
   const requestedPage = params.get('page');
   return {
     page: requestedPage && routablePages.has(requestedPage) ? requestedPage as Page : 'home',
     videoId: null,
     channelId: null,
+    shortId: null,
   };
 }
 
@@ -64,6 +69,7 @@ function App() {
   const [isSelectedVideoLoading, setIsSelectedVideoLoading] = useState(initialRoute.videoId !== null);
   const [selectedVideoLoadFailed, setSelectedVideoLoadFailed] = useState(false);
   const [selectedChannelId, setSelectedChannelId] = useState<string | null>(initialRoute.channelId);
+  const [selectedShortId, setSelectedShortId] = useState<string | null>(initialRoute.shortId);
   const [query, setQuery] = useState('');
   const [category, setCategory] = useState<CategoryFilter>('All');
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
@@ -147,15 +153,18 @@ function App() {
 
   const scrollToTop = () => window.scrollTo({ top: 0, behavior: 'smooth' });
 
-  const navigate = (nextPage: Page, target?: { videoId?: string; channelId?: string }) => {
+  const navigate = (nextPage: Page, target?: { videoId?: string; channelId?: string; shortId?: string }) => {
     const nextUrl = new URL(window.location.href);
     nextUrl.searchParams.delete('video');
     nextUrl.searchParams.delete('channel');
+    nextUrl.searchParams.delete('clip');
     nextUrl.searchParams.delete('page');
     if (nextPage === 'watch' && target?.videoId) {
       nextUrl.searchParams.set('video', target.videoId);
     } else if (nextPage === 'channel' && target?.channelId) {
       nextUrl.searchParams.set('channel', target.channelId);
+    } else if (nextPage === 'shorts' && target?.shortId) {
+      nextUrl.searchParams.set('clip', target.shortId);
     } else if (nextPage !== 'home') {
       nextUrl.searchParams.set('page', nextPage);
     }
@@ -163,6 +172,7 @@ function App() {
       window.history.pushState({ page: nextPage }, '', nextUrl);
     }
     setPage(nextPage);
+    setSelectedShortId(nextPage === 'shorts' ? target?.shortId ?? null : null);
     setIsSidebarOpen(false);
     scrollToTop();
   };
@@ -176,6 +186,7 @@ function App() {
       setIsSelectedVideoLoading(route.videoId !== null);
       setSelectedVideoLoadFailed(false);
       setSelectedChannelId(route.channelId);
+      setSelectedShortId(route.shortId);
       setIsSidebarOpen(false);
       scrollToTop();
     };
@@ -196,8 +207,8 @@ function App() {
 
   const handleQueryChange = (value: string) => {
     setQuery(value);
-    if (page !== 'home' && page !== 'explore') {
-      navigate('home');
+    if (page !== 'explore') {
+      navigate('explore');
     }
   };
 
@@ -210,18 +221,16 @@ function App() {
     switch (page) {
       case 'home':
         return (
-          <FeedPage
-            title={t('feed.homeTitle')}
-            description={t('feed.homeDescription')}
+          <HomeFeedPage
             videos={allVideos}
-            query={query}
-            category={category}
-            onCategoryChange={setCategory}
-            onResetFilters={resetFilters}
+            shorts={allShorts}
+            shortsSchemaMissing={shortsSchemaMissing}
+            isLoading={isVideosLoading}
+            error={uploadsError}
+            onRetry={refreshUploads}
             onSelectVideo={openVideo}
             onOpenChannel={openChannel}
             onNavigate={navigate}
-            isHome
           />
         );
       case 'explore':
@@ -247,6 +256,7 @@ function App() {
             schemaMissing={shortsSchemaMissing}
             onNavigate={navigate}
             onOpenChannel={openChannel}
+            initialVideoId={selectedShortId}
           />
         );
       case 'login':
@@ -360,7 +370,7 @@ function App() {
         unreadCount={notificationState.unreadCount}
       />
 
-      <div className="flex pt-[76px]">
+      <div className="flex min-h-screen pt-[76px]">
         <Sidebar
           activePage={page}
           isOpen={isSidebarOpen}
@@ -368,8 +378,8 @@ function App() {
           onClose={() => setIsSidebarOpen(false)}
         />
 
-        <main className="min-w-0 flex-1 px-4 pb-8 pt-6 sm:px-6 sm:pt-8 lg:px-9">
-          {uploadsError && (
+        <main className="min-w-0 flex-1 px-4 pb-8 pt-6 sm:px-6 sm:pt-8 md:ml-[248px] lg:px-9">
+          {uploadsError && page !== 'home' && (
             <p role="alert" className="mb-6 rounded-lg border border-red-500/40 bg-red-500/10 px-4 py-3 text-sm text-red-200">
               {uploadsError}
             </p>
