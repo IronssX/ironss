@@ -408,10 +408,12 @@ export function ShortsPage({
                 </span>
               </span>
             </button>
-            <button type="button" onClick={() => setShowComments((shown) => !shown)} aria-expanded={showComments} aria-label={t('shorts.comments')} className="shorts-control-button transition-transform duration-200 hover:scale-110 active:scale-95">
-              <MessageCircle className="h-6 w-6" />
-              <span>{formatExactCount(shortComments.commentCount, language)}</span>
-            </button>
+            {activeVideo.commentsEnabled && (
+              <button type="button" onClick={() => setShowComments((shown) => !shown)} aria-expanded={showComments} aria-label={t('shorts.comments')} className="shorts-control-button transition-transform duration-200 hover:scale-110 active:scale-95">
+                <MessageCircle className="h-6 w-6" />
+                <span>{formatExactCount(shortComments.commentCount, language)}</span>
+              </button>
+            )}
             <button type="button" onClick={() => void handleShare()} aria-label={t('shorts.share')} className="shorts-control-button">
               <Share2 className="h-5 w-5" />
               <span>{t('shorts.share')}</span>
@@ -445,7 +447,7 @@ export function ShortsPage({
         </div>
       </div>
 
-      {isCommentsMounted && (
+      {isCommentsMounted && activeVideo.commentsEnabled && (
         <div data-shorts-comments data-state={isCommentsPanelOpen ? 'open' : 'closed'} aria-hidden={!isCommentsPanelOpen} className="clips-comments-panel absolute inset-x-3 bottom-3 z-30 max-h-[54dvh] overflow-y-auto rounded-2xl border border-white/10 bg-[#15131b]/95 p-4 shadow-2xl backdrop-blur-xl sm:inset-y-16 sm:left-auto sm:right-6 sm:w-[min(380px,calc(100vw-48px))] sm:max-h-[calc(100dvh-8rem)] md:inset-y-16 md:right-6">
           <div className="mb-4 flex items-center justify-between">
             <h2 className="text-sm font-semibold text-white">{t('shorts.comments')}</h2>

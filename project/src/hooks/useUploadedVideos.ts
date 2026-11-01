@@ -57,6 +57,11 @@ export function useUploadedVideos() {
 
   const refresh = useCallback(() => setReloadCount((count) => count + 1), []);
 
+  useEffect(() => {
+    window.addEventListener('ironss:videos-changed', refresh);
+    return () => window.removeEventListener('ironss:videos-changed', refresh);
+  }, [refresh]);
+
   return {
     videos,
     shorts,

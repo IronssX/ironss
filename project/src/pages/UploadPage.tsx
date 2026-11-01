@@ -5,11 +5,11 @@ import { FormField } from '@/components/FormField';
 import { LoadingSpinner } from '@/components/LoadingSpinner';
 import { VIDEO_UPLOAD_LIMITS } from '@/config/videoUploads';
 import { useAuth } from '@/hooks/useAuth';
-import { uploadVideo } from '@/services/videoService';
+import { uploadVideo, VideoCleanupAggregateError } from '@/services/videoService';
 import type { Page } from '@/types/navigation';
 import { useLanguage } from '@/hooks/useLanguage';
 import { translate, type Language } from '@/i18n';
-import type { VideoType } from '@/types/video';
+import type { VideoType, VideoVisibility } from '@/types/video';
 import {
   formatFileSize,
   validateShortVideoOrientation,
@@ -33,6 +33,8 @@ export function UploadPage({ onNavigate, onUploaded, videoType, shortsSchemaMiss
   const { language, t } = useLanguage();
   const { user, isLoading } = useAuth();
   const [values, setValues] = useState<VideoFormValues>(EMPTY_VALUES);
+  const [visibility, setVisibility] = useState<VideoVisibility | null>(null);
+  const [commentsEnabled, setCommentsEnabled] = useState(true);
   const [errors, setErrors] = useState<VideoFormErrors>({});
   const [formError, setFormError] = useState<string | null>(null);
   const [status, setStatus] = useState<UploadStatus>('idle');
@@ -84,7 +86,7 @@ export function UploadPage({ onNavigate, onUploaded, videoType, shortsSchemaMiss
 
   if (status === 'success') {
     return (
-      <AuthCard title={t('upload.successTitle')} subtitle={t('upload.successSubtitle')}>
+      <AuthCard title={t('upload.successTitle')} subtitle={t(visibility === 'private' ? 'upload.privateSuccessSubtitle' : 'upload.successSubtitle')}>
         <div className="flex justify-center">
           <CheckCircle2 className="h-14 w-14 text-neon-300" />
         </div>
@@ -138,7 +140,7 @@ export function UploadPage({ onNavigate, onUploaded, videoType, shortsSchemaMiss
     const nextErrors = validateVideoForm(values, language);
     setErrors(nextErrors);
     setFormError(null);
-    if (Object.keys(nextErrors).length > 0 || !values.videoFile || isValidatingVideo) return;
+    if (Object.keys(nextErrors).length > 0 || !values.videoFile || !visibility || isValidatingVideo) return;
 
     setStatus('uploading');
     setProgress(0);
@@ -150,11 +152,14 @@ export function UploadPage({ onNavigate, onUploaded, videoType, shortsSchemaMiss
         title: values.title.trim(),
         description: values.description.trim(),
         videoType,
+        visibility,
+        commentsEnabled,
         onProgress: setProgress,
       });
       setStatus('success');
       onUploaded();
     } catch (error) {
+      console.error('[IRONSS] Video upload failed.', error);
       setStatus('idle');
       setFormError(describeUploadError(error, language));
     }
@@ -233,6 +238,25 @@ export function UploadPage({ onNavigate, onUploaded, videoType, shortsSchemaMiss
           {errors.description && <p className="text-xs text-red-300">{errors.description}</p>}
         </div>
 
+        <fieldset className="flex flex-col gap-2">
+          <legend className="mb-1 text-sm font-medium text-gray-200">{t('videoManage.visibility')} <span className="text-red-300">*</span></legend>
+          <p className="mb-1 text-xs text-gray-400">{t('upload.visibilityRequired')}</p>
+          {(['public', 'private'] as const).map((option) => (
+            <label key={option} className={`flex cursor-pointer items-start gap-3 rounded-xl border p-3 transition-colors ${visibility === option ? 'border-neon-400/50 bg-neon-400/[0.07]' : 'border-white/[0.08] bg-white/[0.015] hover:border-white/20'}`}>
+              <input type="radio" name="video-visibility" value={option} checked={visibility === option} onChange={() => setVisibility(option)} disabled={isUploading} className="mt-1 accent-fuchsia-400" />
+              <span>
+                <span className="block text-sm font-medium text-white">{t(option === 'public' ? 'videoManage.public' : 'videoManage.private')}</span>
+                <span className="mt-0.5 block text-xs text-gray-400">{t(option === 'public' ? 'videoManage.publicDescription' : 'videoManage.privateDescription')}</span>
+              </span>
+            </label>
+          ))}
+        </fieldset>
+
+        <label className="flex cursor-pointer items-center gap-3 rounded-xl border border-white/[0.08] p-3 text-sm text-gray-200">
+          <input type="checkbox" checked={commentsEnabled} onChange={(event) => setCommentsEnabled(event.target.checked)} disabled={isUploading} className="h-4 w-4 accent-fuchsia-400" />
+          {t('videoManage.commentsEnabled')}
+        </label>
+
         {videoType === 'standard' && <div className="flex flex-col gap-2">
           <span className="text-sm font-medium text-gray-200">
             {t('upload.thumbnail')} <span className="text-gray-500">({t('upload.optional')})</span>
@@ -287,7 +311,7 @@ export function UploadPage({ onNavigate, onUploaded, videoType, shortsSchemaMiss
 
         <button
           type="submit"
-          disabled={isUploading || isValidatingVideo}
+          disabled={isUploading || isValidatingVideo || !visibility}
           className="primary-button h-11 w-full"
         >
           <Upload className="h-4 w-4" />
@@ -300,6 +324,10 @@ export function UploadPage({ onNavigate, onUploaded, videoType, shortsSchemaMiss
 
 function describeUploadError(error: unknown, language: Language): string {
   const message = error instanceof Error ? error.message : '';
+  if (error instanceof VideoCleanupAggregateError) return translate(language, 'upload.cleanupFailed');
+  if (message.includes('visibility') || message.includes('comments_enabled')) {
+    return translate(language, 'videoManage.migrationRequired');
+  }
   if (message.includes('status 413')) return translate(language, 'upload.fileTooLarge');
   if (message.includes('status 4')) return translate(language, 'upload.serverRejected');
   if (message.includes('Network error')) return translate(language, 'upload.networkError');

@@ -6,6 +6,7 @@ import {
   Heart,
   LayoutDashboard,
   ListVideo,
+  LockKeyhole,
   MessageSquare,
   Settings,
   Upload,
@@ -15,6 +16,7 @@ import {
 } from 'lucide-react';
 import { AuthCard } from '@/components/AuthCard';
 import { LoadingSpinner } from '@/components/LoadingSpinner';
+import { VideoManagementMenu } from '@/components/VideoManagementMenu';
 import { useAuth } from '@/hooks/useAuth';
 import { useLanguage } from '@/hooks/useLanguage';
 import type { TranslationKey } from '@/i18n';
@@ -50,6 +52,13 @@ export function CreatorStudioPage({ onNavigate, onSelectVideo }: CreatorStudioPa
   const [dailyViews, setDailyViews] = useState<DailyVideoViews[] | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [videosFailed, setVideosFailed] = useState(false);
+  const [videosReloadCount, setVideosReloadCount] = useState(0);
+
+  useEffect(() => {
+    const refresh = () => setVideosReloadCount((count) => count + 1);
+    window.addEventListener('ironss:videos-changed', refresh);
+    return () => window.removeEventListener('ironss:videos-changed', refresh);
+  }, []);
 
   useEffect(() => {
     if (!user?.id) return;
@@ -84,7 +93,7 @@ export function CreatorStudioPage({ onNavigate, onSelectVideo }: CreatorStudioPa
     return () => {
       isCurrent = false;
     };
-  }, [user?.id]);
+  }, [user?.id, videosReloadCount]);
 
   if (isAuthLoading) return <LoadingSpinner label={t('loading.account')} />;
 
@@ -328,6 +337,7 @@ interface StudioVideoItemProps extends SectionTranslationProps {
 function StudioVideoItem({ video, language, t, onSelect, detailed = false }: StudioVideoItemProps) {
   return (
     <div className={`grid min-w-0 items-center gap-3 py-3 md:gap-4 ${detailed ? 'md:grid-cols-[minmax(0,1fr)_8rem_8rem_10rem]' : 'grid-cols-[minmax(0,1fr)_auto]'}`}>
+      <div className="relative min-w-0">
       <button type="button" onClick={() => onSelect(video.id)} className="flex min-w-0 items-center gap-3 text-left">
         <span className="flex h-14 w-24 shrink-0 items-center justify-center overflow-hidden rounded border border-surface-border bg-surface-raised">
           {video.thumbnailUrl ? (
@@ -342,6 +352,9 @@ function StudioVideoItem({ video, language, t, onSelect, detailed = false }: Stu
             {detailed && <span className="mt-1 block text-xs text-gray-500 md:hidden">— {t('studio.notTracked')}</span>}
         </span>
       </button>
+      {video.visibility === 'private' && <span className="mt-1 inline-flex items-center gap-1 text-[10px] text-amber-200"><LockKeyhole className="h-3 w-3" />{t('videoManage.private')}</span>}
+      <VideoManagementMenu video={video} />
+      </div>
       <span className="text-right text-sm tabular-nums text-gray-300 md:text-left">{formatViews(video.views, language)}</span>
       {detailed && (
         <>

@@ -1,7 +1,9 @@
 import { formatUploadDate, formatViews } from '@/utils/format';
 import { Thumbnail } from '@/components/Thumbnail';
+import { VideoManagementMenu } from '@/components/VideoManagementMenu';
 import { useLanguage } from '@/hooks/useLanguage';
 import type { Video } from '@/types/video';
+import { LockKeyhole } from 'lucide-react';
 
 interface VideoCardProps {
   video: Video;
@@ -24,7 +26,7 @@ export function VideoCard({ video, onSelect, onOpenChannel }: VideoCardProps) {
   );
 
   return (
-    <article className="video-card group flex w-full animate-fade-in flex-col rounded-[22px]">
+    <article className="video-card group relative flex w-full animate-fade-in flex-col rounded-[22px]">
       <button
         type="button"
         onClick={() => onSelect(video.id)}
@@ -43,6 +45,12 @@ export function VideoCard({ video, onSelect, onOpenChannel }: VideoCardProps) {
           )}
         </div>
       </button>
+      {video.visibility === 'private' && (
+        <span className="absolute left-2 top-2 z-10 inline-flex items-center gap-1 rounded-full border border-amber-300/25 bg-black/75 px-2 py-1 text-[10px] font-medium text-amber-100 backdrop-blur">
+          <LockKeyhole className="h-3 w-3" />{t('videoManage.private')}
+        </span>
+      )}
+      <VideoManagementMenu video={video} />
 
       <div className="mt-3.5 flex gap-3">
         {canOpenChannel ? (

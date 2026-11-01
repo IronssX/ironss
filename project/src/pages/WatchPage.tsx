@@ -1,11 +1,12 @@
-import { ArrowLeft, Bookmark, Check, Eye, Link2, Mail, ThumbsDown, UserPlus } from 'lucide-react';
-import { useRef, useState } from 'react';
+import { ArrowLeft, Bookmark, Check, Eye, Link2, LockKeyhole, Mail, ThumbsDown, UserPlus } from 'lucide-react';
+import { useEffect, useRef, useState } from 'react';
 import { CommentsSection } from '@/components/CommentsSection';
 import { LikeButton } from '@/components/LikeButton';
 import { Thumbnail } from '@/components/Thumbnail';
 import { VideoPlayer } from '@/components/VideoPlayer';
+import { VideoManagementMenu } from '@/components/VideoManagementMenu';
 import { getInitials, formatUploadDate, formatViews } from '@/utils/format';
-import { recordVideoView } from '@/services/videoService';
+import { getVideoPlaybackUrl, recordVideoView } from '@/services/videoService';
 import type { Video } from '@/types/video';
 import { useLanguage } from '@/hooks/useLanguage';
 import { useVideoLike } from '@/hooks/useVideoLike';
@@ -28,10 +29,45 @@ interface WatchPageProps {
 export function WatchPage({ video, relatedVideos, onBack, onSelectVideo, onOpenChannel, onViewRecorded, onNavigate }: WatchPageProps) {
   const { language, t } = useLanguage();
   const { user } = useAuth();
+  const userId = user?.id;
   const { reduceMotion } = useSettings();
   const recordedVideoIdRef = useRef<string | null>(null);
   const [actionFeedback, setActionFeedback] = useState('');
   const [connectionAnimated, setConnectionAnimated] = useState(false);
+  const [playbackUrl, setPlaybackUrl] = useState(video.visibility === 'public' ? video.videoUrl : '');
+  const [playbackFailed, setPlaybackFailed] = useState(false);
+  const isPrivatePlaybackUnauthorized = video.visibility === 'private' && userId !== video.ownerId;
+
+  useEffect(() => {
+    let active = true;
+    setPlaybackFailed(false);
+    if (video.visibility === 'public') {
+      setPlaybackUrl(video.privacyTransitionPending ? '' : video.videoUrl);
+      return () => {
+        active = false;
+      };
+    }
+
+    setPlaybackUrl('');
+    if (!userId || userId !== video.ownerId) {
+      setPlaybackFailed(true);
+      return () => {
+        active = false;
+      };
+    }
+
+    getVideoPlaybackUrl(video)
+      .then((url) => {
+        if (active) setPlaybackUrl(url);
+      })
+      .catch((error: unknown) => {
+        console.error('[IRONSS] Private video could not be loaded.', error);
+        if (active) setPlaybackFailed(true);
+      });
+    return () => {
+      active = false;
+    };
+  }, [userId, video]);
   const handlePlay = () => {
     if (recordedVideoIdRef.current === video.id) return;
     const videoId = video.id;
@@ -137,14 +173,34 @@ export function WatchPage({ video, relatedVideos, onBack, onSelectVideo, onOpenC
           {t('watch.backHome')}
         </button>
 
-        <VideoPlayer key={video.id} src={video.videoUrl} title={video.title} onPlay={handlePlay} />
+        {playbackUrl && !isPrivatePlaybackUnauthorized ? (
+          <VideoPlayer key={video.id} src={playbackUrl} title={video.title} onPlay={handlePlay} />
+        ) : (
+          <p role={playbackFailed || isPrivatePlaybackUnauthorized ? 'alert' : 'status'} className={`rounded-2xl border px-5 py-8 text-center text-sm ${playbackFailed || isPrivatePlaybackUnauthorized ? 'border-red-500/40 bg-red-500/10 text-red-200' : 'border-white/[0.07] bg-white/[0.015] text-gray-400'}`}>
+            {video.privacyTransitionPending
+              ? t('videoManage.privacyTransitionPending')
+              : playbackFailed || isPrivatePlaybackUnauthorized
+                ? t('videoManage.privateLoadFailed')
+                : t('videoManage.loadingPrivate')}
+          </p>
+        )}
 
         <div className="flex flex-col gap-4">
           <div>
-            <span className="inline-block rounded-full border border-neon-300/15 bg-neon-300/[0.06] px-2.5 py-1 text-[9px] font-bold uppercase tracking-[.17em] text-neon-200">
-              {t('watch.uploaded')}
-            </span>
-            <h1 className="mt-3 text-2xl font-semibold leading-snug tracking-tight text-white sm:text-[30px]">{video.title}</h1>
+            <div className="flex items-start justify-between gap-3">
+              <div>
+                <span className="inline-flex items-center gap-1.5 rounded-full border border-neon-300/15 bg-neon-300/[0.06] px-2.5 py-1 text-[9px] font-bold uppercase tracking-[.17em] text-neon-200">
+                  {video.visibility === 'private' && <LockKeyhole className="h-3 w-3" />}
+                  {video.visibility === 'private' ? t('videoManage.private') : t('watch.uploaded')}
+                </span>
+                <h1 className="mt-3 text-2xl font-semibold leading-snug tracking-tight text-white sm:text-[30px]">{video.title}</h1>
+              </div>
+              {user?.id === video.ownerId && (
+                <div className="relative h-10 w-10 shrink-0">
+                  <VideoManagementMenu video={video} />
+                </div>
+              )}
+            </div>
             <p className="mt-2 flex flex-wrap items-center gap-x-2 text-sm text-gray-400">
               <Eye className="h-4 w-4" />
               {formatViews(video.views, language)} &middot; {formatUploadDate(video.uploadedAt, Date.now(), language)}
@@ -253,7 +309,13 @@ export function WatchPage({ video, relatedVideos, onBack, onSelectVideo, onOpenC
             {video.description}
           </p>
 
-          <CommentsSection key={video.id} videoId={video.id} />
+          {video.commentsEnabled ? (
+            <CommentsSection key={video.id} videoId={video.id} />
+          ) : (
+            <p className="rounded-2xl border border-white/[0.07] bg-white/[0.015] px-5 py-4 text-sm text-gray-400">
+              {t('videoManage.commentsDisabled')}
+            </p>
+          )}
         </div>
       </div>
 

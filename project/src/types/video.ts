@@ -11,6 +11,7 @@ export const CATEGORIES = [
 export type Category = (typeof CATEGORIES)[number];
 export type CategoryFilter = 'All' | Category;
 export type VideoType = 'standard' | 'short';
+export type VideoVisibility = 'public' | 'private';
 
 export interface Video {
   id: string;
@@ -25,5 +26,8 @@ export interface Video {
   thumbnailUrl: string;
   videoUrl: string;
   videoType: VideoType;
+  visibility: VideoVisibility;
+  commentsEnabled: boolean;
+  privacyTransitionPending: boolean;
   ownerId?: string;
 }

@@ -1,5 +1,5 @@
 import { Library, Users } from 'lucide-react';
-import { useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { Sidebar } from '@/components/Sidebar';
 import { TopBar } from '@/components/TopBar';
 import { useUploadedVideos } from '@/hooks/useUploadedVideos';
@@ -25,7 +25,7 @@ import type { CategoryFilter, Video } from '@/types/video';
 import { useLanguage } from '@/hooks/useLanguage';
 import { useAuth } from '@/hooks/useAuth';
 import { useNotifications } from '@/hooks/useNotifications';
-import { fetchVideoById } from '@/services/videoService';
+import { clearPrivateVideoCache, fetchVideoById, retryMyVideoStorageCleanup } from '@/services/videoService';
 import { logSupabaseFailure } from '@/utils/supabaseDiagnostics';
 
 interface RouteLocation {
@@ -61,6 +61,7 @@ function getRouteLocation(): RouteLocation {
 function App() {
   const { t } = useLanguage();
   const { user } = useAuth();
+  const previousUserId = useRef(user?.id ?? null);
   const notificationState = useNotifications(user?.id ?? null);
   const [initialRoute] = useState(getRouteLocation);
   const [page, setPage] = useState<Page>(initialRoute.page);
@@ -73,6 +74,8 @@ function App() {
   const [query, setQuery] = useState('');
   const [category, setCategory] = useState<CategoryFilter>('All');
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
+  const [cleanupRetryFailed, setCleanupRetryFailed] = useState(false);
+  const [cleanupRetryBusy, setCleanupRetryBusy] = useState(false);
 
   const {
     videos: uploadedVideos,
@@ -98,19 +101,59 @@ function App() {
     [uploadedShorts, viewOverrides],
   );
   const allUploadedVideos = useMemo(() => [...allVideos, ...allShorts], [allVideos, allShorts]);
+  const publicVideos = useMemo(() => allVideos.filter((video) => video.visibility === 'public'), [allVideos]);
+  const publicShorts = useMemo(() => allShorts.filter((video) => video.visibility === 'public'), [allShorts]);
 
   const handleViewRecorded = (videoId: string, views: number) => {
     setViewOverrides((current) => ({ ...current, [videoId]: views }));
   };
 
   const trendingVideos = useMemo(
-    () => [...allVideos].sort((a, b) => b.views - a.views),
-    [allVideos],
+    () => [...publicVideos].sort((a, b) => b.views - a.views),
+    [publicVideos],
   );
 
   const selectedVideo = selectedVideoOverride?.id === selectedVideoId
     ? selectedVideoOverride
     : allUploadedVideos.find((video) => video.id === selectedVideoId) ?? null;
+
+  useEffect(() => {
+    const nextUserId = user?.id ?? null;
+    if (previousUserId.current === nextUserId) return;
+    previousUserId.current = nextUserId;
+    clearPrivateVideoCache();
+  }, [user?.id]);
+
+  useEffect(() => {
+    if (!user?.id) {
+      setCleanupRetryFailed(false);
+      return;
+    }
+    let active = true;
+    retryMyVideoStorageCleanup().then(() => {
+      if (active) setCleanupRetryFailed(false);
+    }).catch((error: unknown) => {
+      console.error('[IRONSS] Pending video file cleanup could not be completed.', error);
+      if (active) setCleanupRetryFailed(true);
+    });
+    return () => {
+      active = false;
+    };
+  }, [user?.id]);
+
+  const retryPendingVideoCleanup = async () => {
+    if (cleanupRetryBusy) return;
+    setCleanupRetryBusy(true);
+    try {
+      await retryMyVideoStorageCleanup();
+      setCleanupRetryFailed(false);
+    } catch (error) {
+      console.error('[IRONSS] Pending video file cleanup retry failed.', error);
+      setCleanupRetryFailed(true);
+    } finally {
+      setCleanupRetryBusy(false);
+    }
+  };
 
   useEffect(() => {
     if (page !== 'watch' || !selectedVideoId) {
@@ -151,9 +194,9 @@ function App() {
     };
   }, [isVideosLoading, page, selectedVideo, selectedVideoId]);
 
-  const scrollToTop = () => window.scrollTo({ top: 0, behavior: 'smooth' });
+  const scrollToTop = useCallback(() => window.scrollTo({ top: 0, behavior: 'smooth' }), []);
 
-  const navigate = (nextPage: Page, target?: { videoId?: string; channelId?: string; shortId?: string }) => {
+  const navigate = useCallback((nextPage: Page, target?: { videoId?: string; channelId?: string; shortId?: string }) => {
     const nextUrl = new URL(window.location.href);
     nextUrl.searchParams.delete('video');
     nextUrl.searchParams.delete('channel');
@@ -175,7 +218,34 @@ function App() {
     setSelectedShortId(nextPage === 'shorts' ? target?.shortId ?? null : null);
     setIsSidebarOpen(false);
     scrollToTop();
-  };
+  }, [scrollToTop]);
+
+  useEffect(() => {
+    const handleVideoChanged = (event: Event) => {
+      if (!(event instanceof CustomEvent) || !event.detail || typeof event.detail !== 'object') return;
+      const detail = event.detail as { video?: Video; videoId?: string; deleted?: boolean };
+      if (detail.video?.id === selectedVideoId) setSelectedVideoOverride(detail.video);
+      if (detail.deleted && detail.videoId === selectedVideoId) {
+        setSelectedVideoOverride(null);
+        setSelectedVideoId(null);
+        navigate('home');
+      }
+    };
+    window.addEventListener('ironss:videos-changed', handleVideoChanged);
+    return () => window.removeEventListener('ironss:videos-changed', handleVideoChanged);
+  }, [navigate, selectedVideoId]);
+
+  useEffect(() => {
+    if (
+      page === 'watch' &&
+      selectedVideo?.visibility === 'private' &&
+      selectedVideo.ownerId !== user?.id
+    ) {
+      setSelectedVideoOverride(null);
+      setSelectedVideoId(null);
+      navigate('home');
+    }
+  }, [navigate, page, selectedVideo, user?.id]);
 
   useEffect(() => {
     const handlePopState = () => {
@@ -192,7 +262,7 @@ function App() {
     };
     window.addEventListener('popstate', handlePopState);
     return () => window.removeEventListener('popstate', handlePopState);
-  }, []);
+  }, [scrollToTop]);
 
   const openVideo = (videoId: string, video?: Video) => {
     setSelectedVideoId(videoId);
@@ -222,8 +292,8 @@ function App() {
       case 'home':
         return (
           <HomeFeedPage
-            videos={allVideos}
-            shorts={allShorts}
+            videos={publicVideos}
+            shorts={publicShorts}
             shortsSchemaMissing={shortsSchemaMissing}
             isLoading={isVideosLoading}
             error={uploadsError}
@@ -252,7 +322,7 @@ function App() {
       case 'shorts':
         return (
           <ShortsPage
-            videos={allShorts}
+            videos={publicShorts}
             schemaMissing={shortsSchemaMissing}
             onNavigate={navigate}
             onOpenChannel={openChannel}
@@ -348,7 +418,10 @@ function App() {
         return (
           <WatchPage
             video={selectedVideo}
-            relatedVideos={allUploadedVideos.filter((video) => video.id !== selectedVideo.id)}
+            relatedVideos={allUploadedVideos.filter((video) =>
+              video.id !== selectedVideo.id &&
+              (video.visibility === 'public' || video.ownerId === user?.id),
+            )}
             onBack={() => navigate('home')}
             onSelectVideo={openVideo}
             onOpenChannel={openChannel}
@@ -379,6 +452,14 @@ function App() {
         />
 
         <main className="min-w-0 flex-1 px-4 pb-8 pt-6 sm:px-6 sm:pt-8 md:ml-[248px] lg:px-9">
+          {cleanupRetryFailed && (
+            <div role="alert" className="mb-6 flex flex-col gap-3 rounded-xl border border-amber-400/30 bg-amber-400/[0.07] px-4 py-3 text-sm text-amber-100 sm:flex-row sm:items-center sm:justify-between">
+              <p>{t('videoManage.ownerCleanupPending')}</p>
+              <button type="button" disabled={cleanupRetryBusy} onClick={() => void retryPendingVideoCleanup()} className="shrink-0 font-semibold underline underline-offset-2 disabled:opacity-60">
+                {t(cleanupRetryBusy ? 'videoManage.retryingCleanup' : 'videoManage.retryCleanup')}
+              </button>
+            </div>
+          )}
           {uploadsError && page !== 'home' && (
             <p role="alert" className="mb-6 rounded-lg border border-red-500/40 bg-red-500/10 px-4 py-3 text-sm text-red-200">
               {uploadsError}

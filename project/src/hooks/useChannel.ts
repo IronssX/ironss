@@ -77,6 +77,20 @@ export function useChannel(channelId: string): UseChannelResult {
     };
   }, [channelId, viewerId]);
 
+  useEffect(() => {
+    const refreshChannelVideos = () => {
+      if (!channelId) return;
+      void fetchVideosByOwner(channelId)
+        .then((videos) => {
+          setChannel((current) => current ? { ...current, videos } : current);
+          setLoadError(null);
+        })
+        .catch((error: unknown) => setLoadError(error));
+    };
+    window.addEventListener('ironss:videos-changed', refreshChannelVideos);
+    return () => window.removeEventListener('ironss:videos-changed', refreshChannelVideos);
+  }, [channelId]);
+
   const toggleSubscription = async (): Promise<boolean> => {
     if (!channel || !viewerId || channel.profile.id === viewerId) return false;
 
