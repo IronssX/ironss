@@ -14,8 +14,14 @@ export function getPlaybackErrorMessage(code: number | undefined, language: Lang
 }
 
 export function logPlaybackError(src: string, mediaError: MediaError | null, networkState: number): void {
+  let sourceOrigin = 'local or invalid source';
+  try {
+    sourceOrigin = new URL(src).origin;
+  } catch {
+    // Blob URLs and malformed sources do not expose credentials in a query string.
+  }
   console.error('[IRONSS player] Video failed to load', {
-    src,
+    sourceOrigin,
     code: mediaError?.code ?? 'no media error (source element failed)',
     message: mediaError?.message || 'no message from browser',
     networkState,

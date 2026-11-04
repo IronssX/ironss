@@ -16,6 +16,7 @@ import {
 import { useCallback, useEffect, useRef, useState, type TouchEvent } from 'react';
 import type { CSSProperties } from 'react';
 import { ShortVideoCommentsSection } from '@/components/ShortVideoCommentsSection';
+import { LoadingSpinner } from '@/components/LoadingSpinner';
 import { UserAvatar } from '@/components/UserAvatar';
 import { useAuth } from '@/hooks/useAuth';
 import { useChannel } from '@/hooks/useChannel';
@@ -59,6 +60,7 @@ export function ShortsPage({
   const [isCommentsPanelOpen, setIsCommentsPanelOpen] = useState(false);
   const [shareMessage, setShareMessage] = useState('');
   const [playbackError, setPlaybackError] = useState(false);
+  const [isVideoLoading, setIsVideoLoading] = useState(true);
   const [heartAnimationKey, setHeartAnimationKey] = useState(0);
   const [isHeartAnimating, setIsHeartAnimating] = useState(false);
   const [particleBurstKey, setParticleBurstKey] = useState(0);
@@ -71,6 +73,8 @@ export function ShortsPage({
   const heartAnimationTimer = useRef<number | null>(null);
   const particleBurstTimer = useRef<number | null>(null);
   const activeVideo = videos[activeIndex];
+  const navigationRef = useRef({ onNavigate, exitPage });
+  navigationRef.current = { onNavigate, exitPage };
   const { reduceMotion } = useSettings();
   const {
     likeCount,
@@ -96,6 +100,11 @@ export function ShortsPage({
     const initialIndex = videos.findIndex((video) => video.id === initialVideoId);
     if (initialIndex >= 0) setActiveIndex(initialIndex);
   }, [initialVideoId, videos]);
+
+  useEffect(() => {
+    setPlaybackError(false);
+    setIsVideoLoading(true);
+  }, [activeIndex]);
 
   useEffect(() => {
     if (showComments) {
@@ -180,15 +189,23 @@ export function ShortsPage({
     if (!player) return;
     player.muted = isMuted;
     player.volume = volume;
+  }, [activeIndex, isMuted, volume]);
+
+  useEffect(() => {
+    const player = videoRef.current;
+    if (!player) return;
     if (isPlaying) {
-      player.play().then(() => setPlaybackError(false)).catch(() => {
+      player.play().then(() => {
+        if (videoRef.current === player) setPlaybackError(false);
+      }).catch(() => {
+        if (videoRef.current !== player) return;
         setIsPlaying(false);
         setPlaybackError(true);
       });
     } else {
       player.pause();
     }
-  }, [activeIndex, isMuted, isPlaying, volume]);
+  }, [activeIndex, isPlaying]);
 
   const handleVolumeChange = (nextVolume: number) => {
     setVolume(nextVolume);
@@ -203,7 +220,7 @@ export function ShortsPage({
   useEffect(() => {
     const handleWheel = (event: WheelEvent) => {
       if (Math.abs(event.deltaY) < 18) return;
-      if (event.target instanceof HTMLElement && event.target.closest('[data-shorts-comments]')) return;
+      if (event.target instanceof HTMLElement && event.target.closest('[data-shorts-comments], button, input, a, [role="slider"]')) return;
       event.preventDefault();
       navigateVideo(event.deltaY > 0 ? 1 : -1);
     };
@@ -222,7 +239,7 @@ export function ShortsPage({
       } else if (event.key.toLowerCase() === 'm') {
         setIsMuted((muted) => !muted);
       } else if (event.key === 'Escape') {
-        onNavigate(exitPage);
+        navigationRef.current.onNavigate(navigationRef.current.exitPage);
       }
     };
     window.addEventListener('wheel', handleWheel, { passive: false });
@@ -231,10 +248,10 @@ export function ShortsPage({
       window.removeEventListener('wheel', handleWheel);
       window.removeEventListener('keydown', handleKeyDown);
     };
-  }, [exitPage, navigateVideo, onNavigate]);
+  }, [navigateVideo]);
 
   const handleTouchStart = (event: TouchEvent<HTMLElement>) => {
-    if (event.target instanceof HTMLElement && event.target.closest('[data-shorts-comments]')) {
+    if (event.target instanceof HTMLElement && event.target.closest('[data-shorts-comments], button, input, a, [role="slider"]')) {
       touchStartRef.current = null;
       return;
     }
@@ -320,8 +337,6 @@ export function ShortsPage({
           <video
             ref={videoRef}
             key={activeVideo.id}
-            src={activeVideo.videoUrl}
-            autoPlay
             playsInline
             muted={isMuted}
             loop
@@ -331,11 +346,22 @@ export function ShortsPage({
             onClick={() => setIsPlaying((playing) => !playing)}
             onPlay={() => setIsPlaying(true)}
             onPause={() => setIsPlaying(false)}
+            onLoadStart={() => setIsVideoLoading(true)}
+            onCanPlay={() => setIsVideoLoading(false)}
+            onPlaying={() => setIsVideoLoading(false)}
             onError={() => {
               setPlaybackError(true);
+              setIsVideoLoading(false);
               setIsPlaying(false);
             }}
-          />
+          >
+            <source src={activeVideo.videoUrl} type={activeVideo.mimeType} />
+          </video>
+          {isVideoLoading && !playbackError && (
+            <div className="pointer-events-none absolute inset-0 z-[1] flex items-center justify-center bg-black/20" aria-live="polite">
+              <LoadingSpinner />
+            </div>
+          )}
           <div className="pointer-events-none absolute inset-x-0 bottom-0 h-56 bg-gradient-to-t from-black/90 via-black/35 to-transparent" />
           <div className="absolute left-4 top-4 flex items-center gap-1.5 rounded-full border border-white/10 bg-black/35 px-3 py-1.5 text-[10px] font-semibold text-white/80 backdrop-blur-md sm:hidden">
             <Clapperboard className="h-3.5 w-3.5 text-neon-200" />
@@ -357,7 +383,12 @@ export function ShortsPage({
           {playbackError && (
             <div role="alert" className="absolute inset-x-4 top-1/2 z-20 -translate-y-1/2 rounded-2xl border border-white/10 bg-black/75 p-4 text-center text-sm text-white backdrop-blur-md">
               {t('shorts.playbackError')}
-              <button type="button" onClick={() => { setPlaybackError(false); setIsPlaying(true); }} className="mt-3 block w-full text-xs font-semibold text-neon-200">{t('shorts.retry')}</button>
+              <button type="button" onClick={() => {
+                setPlaybackError(false);
+                setIsVideoLoading(true);
+                setIsPlaying(true);
+                videoRef.current?.load();
+              }} className="mt-3 block min-h-11 w-full text-xs font-semibold text-neon-200 focus-visible:outline focus-visible:outline-2 focus-visible:outline-neon-300">{t('shorts.retry')}</button>
             </div>
           )}
 

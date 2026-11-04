@@ -1,6 +1,6 @@
 import { VIDEO_TYPE_EXTENSIONS } from '@/config/videoUploads';
 import { requireSupabase, supabase, SUPABASE_PUBLISHABLE_KEY, SUPABASE_URL } from '@/lib/supabase';
-import type { Video, VideoType, VideoVisibility } from '@/types/video';
+import type { Video, VideoMimeType, VideoType, VideoVisibility } from '@/types/video';
 
 const VIDEO_BUCKET = 'videos';
 const privateObjectUrls = new Map<string, string>();
@@ -31,6 +31,7 @@ interface VideoRow {
   title: string;
   description: string;
   video_path: string;
+  mime_type: VideoMimeType;
   thumbnail_path: string | null;
   created_at: string;
   view_count: number;
@@ -40,8 +41,8 @@ interface VideoRow {
   privacy_transition_pending: boolean;
 }
 
-const VIDEO_FIELDS = 'id, owner_id, uploader_name, title, description, video_path, thumbnail_path, created_at, view_count, visibility, comments_enabled, privacy_transition_pending';
-const VIDEO_EDIT_FIELDS = 'id, owner_id, uploader_name, title, description, video_path, thumbnail_path, created_at, view_count, video_type, visibility, comments_enabled, privacy_transition_pending';
+const VIDEO_FIELDS = 'id, owner_id, uploader_name, title, description, video_path, thumbnail_path, mime_type, created_at, view_count, visibility, comments_enabled, privacy_transition_pending';
+const VIDEO_EDIT_FIELDS = 'id, owner_id, uploader_name, title, description, video_path, thumbnail_path, mime_type, created_at, view_count, video_type, visibility, comments_enabled, privacy_transition_pending';
 
 export class VideoTypeSchemaMissingError extends Error {
   constructor() {
@@ -124,6 +125,7 @@ function isVideoRow(value: unknown): value is VideoRow {
     typeof row.title === 'string' &&
     typeof row.description === 'string' &&
     typeof row.video_path === 'string' &&
+    (row.mime_type === 'video/mp4' || row.mime_type === 'video/webm') &&
     (row.thumbnail_path === null || typeof row.thumbnail_path === 'string') &&
     typeof row.created_at === 'string' &&
     typeof row.view_count === 'number' &&
@@ -148,6 +150,7 @@ function mapVideoRow(row: VideoRow, signedUrls: Map<string, string>): Video {
     duration: '',
     thumbnailUrl: !row.privacy_transition_pending && row.thumbnail_path ? signedUrls.get(row.thumbnail_path) ?? '' : '',
     videoUrl: row.visibility === 'public' && !row.privacy_transition_pending ? signedUrls.get(row.video_path) ?? '' : '',
+    mimeType: row.mime_type,
     videoType: row.video_type ?? 'standard',
     visibility: row.visibility,
     commentsEnabled: row.comments_enabled,

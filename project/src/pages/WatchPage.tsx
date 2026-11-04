@@ -75,7 +75,7 @@ export function WatchPage({ video, relatedVideos, onBack, onSelectVideo, onOpenC
     recordVideoView(videoId)
       .then((views) => onViewRecorded(videoId, views))
       .catch((error: unknown) => {
-        recordedVideoIdRef.current = null;
+        if (recordedVideoIdRef.current === videoId) recordedVideoIdRef.current = null;
         console.warn('[IRONSS] View could not be recorded.', error);
       });
   };
@@ -174,7 +174,14 @@ export function WatchPage({ video, relatedVideos, onBack, onSelectVideo, onOpenC
         </button>
 
         {playbackUrl && !isPrivatePlaybackUnauthorized ? (
-          <VideoPlayer key={video.id} src={playbackUrl} title={video.title} onPlay={handlePlay} />
+          <VideoPlayer
+            key={video.id}
+            src={playbackUrl}
+            mimeType={video.mimeType}
+            title={video.title}
+            onPlay={handlePlay}
+            onRefreshSource={video.visibility === 'private' ? () => getVideoPlaybackUrl(video) : undefined}
+          />
         ) : (
           <p role={playbackFailed || isPrivatePlaybackUnauthorized ? 'alert' : 'status'} className={`rounded-2xl border px-5 py-8 text-center text-sm ${playbackFailed || isPrivatePlaybackUnauthorized ? 'border-red-500/40 bg-red-500/10 text-red-200' : 'border-white/[0.07] bg-white/[0.015] text-gray-400'}`}>
             {video.privacyTransitionPending

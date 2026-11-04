@@ -1,35 +1,42 @@
 import { AlertTriangle, Play, RotateCw } from 'lucide-react';
-import { useEffect, useRef, useState } from 'react';
-import type { SyntheticEvent } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
+import type { KeyboardEvent, SyntheticEvent } from 'react';
 import { LoadingSpinner } from '@/components/LoadingSpinner';
 import { PlayerControls } from '@/components/PlayerControls';
 import { getPlaybackErrorMessage, logPlaybackError } from '@/utils/playbackErrors';
 import { useLanguage } from '@/hooks/useLanguage';
+import type { VideoMimeType } from '@/types/video';
 
 interface VideoPlayerProps {
   src: string;
+  mimeType?: VideoMimeType;
   title: string;
   onPlay?: () => void;
+  onRefreshSource?: () => Promise<string>;
 }
 
 type FullscreenVideo = HTMLVideoElement & { webkitEnterFullscreen?: () => void };
 
 const canFullscreen =
   typeof document !== 'undefined' &&
-  (document.fullscreenEnabled || 'webkitEnterFullscreen' in HTMLVideoElement.prototype);
+  (document.fullscreenEnabled || (typeof HTMLVideoElement !== 'undefined' && 'webkitEnterFullscreen' in HTMLVideoElement.prototype));
 
-export function VideoPlayer({ src, title, onPlay }: VideoPlayerProps) {
+export function VideoPlayer({ src, mimeType, title, onPlay, onRefreshSource }: VideoPlayerProps) {
   const { language, t } = useLanguage();
   const playerRef = useRef<HTMLDivElement>(null);
+  const pendingSeekRef = useRef<number | null>(null);
+  const shouldResumeRef = useRef(false);
+  const refreshAttemptedRef = useRef(false);
+  const refreshInProgressRef = useRef(false);
   const [videoElement, setVideoElement] = useState<FullscreenVideo | null>(null);
+  const [refreshedSource, setRefreshedSource] = useState<string | null>(null);
   const [isPlaying, setIsPlaying] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
   const [errorCode, setErrorCode] = useState<number | null>(null);
-  const [currentTime, setCurrentTime] = useState(0);
-  const [duration, setDuration] = useState(0);
   const [volume, setVolume] = useState(1);
   const [isMuted, setIsMuted] = useState(false);
   const [isFullscreen, setIsFullscreen] = useState(false);
+  const activeSource = refreshedSource ?? src;
 
   useEffect(() => {
     const handleFullscreenChange = () => {
@@ -40,36 +47,50 @@ export function VideoPlayer({ src, title, onPlay }: VideoPlayerProps) {
     return () => document.removeEventListener('fullscreenchange', handleFullscreenChange);
   }, []);
 
+  useEffect(() => {
+    setRefreshedSource(null);
+    setErrorCode(null);
+    setIsLoading(true);
+    refreshAttemptedRef.current = false;
+    pendingSeekRef.current = null;
+    shouldResumeRef.current = false;
+  }, [src]);
+
+  useEffect(() => {
+    if (!refreshedSource || !videoElement) return;
+    videoElement.load();
+  }, [refreshedSource, videoElement]);
+
   const hasError = errorCode !== null;
   const errorMessage = errorCode === null ? null : getPlaybackErrorMessage(errorCode, language);
   const showSpinner = isLoading && !hasError;
   const showPlayOverlay = !isPlaying && !isLoading && !hasError;
 
-  const togglePlayback = () => {
+  const togglePlayback = useCallback(() => {
     if (!videoElement || hasError) return;
     if (videoElement.paused) {
-      // Interrupted plays reject with AbortError; real failures arrive through the video error event.
       videoElement.play().catch(() => undefined);
     } else {
       videoElement.pause();
     }
-  };
+  }, [hasError, videoElement]);
 
-  const seek = (time: number) => {
+  const seek = useCallback((time: number) => {
+    if (!videoElement || !Number.isFinite(videoElement.duration)) return;
+    const nextTime = Math.min(Math.max(time, 0), videoElement.duration);
+    videoElement.currentTime = nextTime;
+  }, [videoElement]);
+
+  const changeVolume = useCallback((nextVolume: number) => {
     if (!videoElement) return;
-    videoElement.currentTime = time;
-    setCurrentTime(time);
-  };
+    const boundedVolume = Math.min(1, Math.max(0, nextVolume));
+    videoElement.volume = boundedVolume;
+    videoElement.muted = boundedVolume === 0;
+    setVolume(boundedVolume);
+    setIsMuted(boundedVolume === 0);
+  }, [videoElement]);
 
-  const changeVolume = (nextVolume: number) => {
-    if (!videoElement) return;
-    videoElement.volume = nextVolume;
-    videoElement.muted = nextVolume === 0;
-    setVolume(nextVolume);
-    setIsMuted(nextVolume === 0);
-  };
-
-  const toggleMute = () => {
+  const toggleMute = useCallback(() => {
     if (!videoElement) return;
     const nextMuted = !videoElement.muted;
     if (!nextMuted && videoElement.volume === 0) {
@@ -78,9 +99,9 @@ export function VideoPlayer({ src, title, onPlay }: VideoPlayerProps) {
     }
     videoElement.muted = nextMuted;
     setIsMuted(nextMuted);
-  };
+  }, [videoElement]);
 
-  const toggleFullscreen = () => {
+  const toggleFullscreen = useCallback(() => {
     if (document.fullscreenElement) {
       void document.exitFullscreen();
       return;
@@ -90,34 +111,101 @@ export function VideoPlayer({ src, title, onPlay }: VideoPlayerProps) {
       return;
     }
     videoElement?.webkitEnterFullscreen?.();
-  };
+  }, [videoElement]);
+
+  const refreshSource = useCallback(async (preservePlayback: boolean) => {
+    if (!videoElement || !onRefreshSource || refreshInProgressRef.current) return false;
+    refreshInProgressRef.current = true;
+    setIsLoading(true);
+    setErrorCode(null);
+    pendingSeekRef.current = preservePlayback ? videoElement.currentTime : 0;
+    shouldResumeRef.current = preservePlayback && isPlaying;
+    try {
+      const nextSource = await onRefreshSource();
+      if (!nextSource) throw new Error('The refreshed video URL is empty.');
+      refreshAttemptedRef.current = true;
+      setRefreshedSource(nextSource);
+      return true;
+    } catch (error) {
+      console.error('[IRONSS] Private video URL could not be refreshed.', error);
+      setErrorCode(videoElement.error?.code ?? MediaError.MEDIA_ERR_NETWORK);
+      setIsLoading(false);
+      return false;
+    } finally {
+      refreshInProgressRef.current = false;
+    }
+  }, [isPlaying, onRefreshSource, videoElement]);
 
   const retry = () => {
     if (!videoElement) return;
+    if (onRefreshSource) {
+      refreshAttemptedRef.current = false;
+      void refreshSource(false);
+      return;
+    }
     setErrorCode(null);
     setIsLoading(true);
     setIsPlaying(false);
-    setCurrentTime(0);
     videoElement.load();
   };
 
-  const handleSourceError = () => {
-    logPlaybackError(src, null, videoElement?.networkState ?? -1);
-    setErrorCode(MediaError.MEDIA_ERR_SRC_NOT_SUPPORTED);
-    setIsLoading(false);
-    setIsPlaying(false);
+  const handleKeyDown = (event: KeyboardEvent<HTMLVideoElement>) => {
+    if (event.altKey || event.ctrlKey || event.metaKey || event.target !== videoElement) return;
+    switch (event.key.toLowerCase()) {
+      case ' ':
+      case 'k':
+        event.preventDefault();
+        togglePlayback();
+        break;
+      case 'arrowleft':
+        event.preventDefault();
+        seek((videoElement?.currentTime ?? 0) - 5);
+        break;
+      case 'arrowright':
+        event.preventDefault();
+        seek((videoElement?.currentTime ?? 0) + 5);
+        break;
+      case 'arrowup':
+        event.preventDefault();
+        changeVolume((videoElement?.volume ?? volume) + 0.05);
+        break;
+      case 'arrowdown':
+        event.preventDefault();
+        changeVolume((videoElement?.volume ?? volume) - 0.05);
+        break;
+      case 'm':
+        event.preventDefault();
+        toggleMute();
+        break;
+      case 'f':
+        event.preventDefault();
+        toggleFullscreen();
+        break;
+    }
   };
 
-  const handleDurationChange = (event: SyntheticEvent<HTMLVideoElement>) => {
-    const videoDuration = event.currentTarget.duration;
-    setDuration(Number.isFinite(videoDuration) ? videoDuration : 0);
+  const handleMediaError = (event: SyntheticEvent<HTMLVideoElement>) => {
+    const element = event.currentTarget;
+    const mediaError = element.error;
+    logPlaybackError(activeSource, mediaError, element.networkState);
+    setErrorCode(mediaError?.code ?? MediaError.MEDIA_ERR_SRC_NOT_SUPPORTED);
+    setIsLoading(false);
+    setIsPlaying(false);
+    if (
+      onRefreshSource &&
+      !refreshAttemptedRef.current &&
+      (mediaError?.code === MediaError.MEDIA_ERR_NETWORK ||
+        mediaError?.code === MediaError.MEDIA_ERR_SRC_NOT_SUPPORTED)
+    ) {
+      void refreshSource(true);
+    }
   };
 
   return (
     <div
       ref={playerRef}
-      className={`group overflow-hidden bg-black shadow-2xl ${
-        isFullscreen ? 'flex h-full w-full flex-col' : 'rounded-2xl border border-surface-border'
+      className={`group overflow-hidden bg-black shadow-[0_24px_80px_-32px_rgba(114,58,150,.7)] ${
+        isFullscreen ? 'flex h-full w-full flex-col' : 'rounded-2xl border border-white/10'
       }`}
     >
       <div className={`relative w-full ${isFullscreen ? 'min-h-0 flex-1' : 'aspect-video'}`}>
@@ -125,8 +213,10 @@ export function VideoPlayer({ src, title, onPlay }: VideoPlayerProps) {
           ref={setVideoElement}
           preload="metadata"
           playsInline
+          tabIndex={0}
           aria-label={t('player.label', { title })}
-          className="h-full w-full bg-black object-contain"
+          className="h-full w-full bg-black object-contain focus-visible:outline focus-visible:outline-2 focus-visible:outline-inset focus-visible:outline-neon-300"
+          onKeyDown={handleKeyDown}
           onClick={togglePlayback}
           onPlay={() => {
             setIsPlaying(true);
@@ -134,31 +224,32 @@ export function VideoPlayer({ src, title, onPlay }: VideoPlayerProps) {
           }}
           onPause={() => setIsPlaying(false)}
           onEnded={() => setIsPlaying(false)}
+          onLoadStart={() => setIsLoading(true)}
           onPlaying={() => setIsLoading(false)}
           onCanPlay={() => setIsLoading(false)}
           onLoadedMetadata={(event) => {
             setIsLoading(false);
-            handleDurationChange(event);
+            if (pendingSeekRef.current !== null) {
+              const time = Math.min(pendingSeekRef.current, Number.isFinite(event.currentTarget.duration) ? event.currentTarget.duration : 0);
+              event.currentTarget.currentTime = time;
+              pendingSeekRef.current = null;
+              if (shouldResumeRef.current) {
+                shouldResumeRef.current = false;
+                event.currentTarget.play().catch(() => undefined);
+              }
+            }
           }}
           onSeeking={() => setIsLoading(true)}
           onSeeked={() => setIsLoading(false)}
           onWaiting={() => setIsLoading(true)}
           onStalled={() => setIsLoading(true)}
-          onDurationChange={handleDurationChange}
-          onTimeUpdate={(event) => setCurrentTime(event.currentTarget.currentTime)}
-          onError={(event) => {
-            const mediaError = event.currentTarget.error;
-            logPlaybackError(src, mediaError, event.currentTarget.networkState);
-            setErrorCode(mediaError?.code ?? 0);
-            setIsLoading(false);
-            setIsPlaying(false);
-          }}
+          onError={handleMediaError}
         >
-          <source src={src} type="video/mp4" onError={handleSourceError} />
+          <source src={activeSource} type={mimeType} />
         </video>
 
         {showSpinner && (
-          <div className="pointer-events-none absolute inset-0 flex items-center justify-center bg-black/40">
+          <div className="pointer-events-none absolute inset-0 flex items-center justify-center bg-black/35 backdrop-blur-[2px]" aria-live="polite">
             <LoadingSpinner />
           </div>
         )}
@@ -166,9 +257,9 @@ export function VideoPlayer({ src, title, onPlay }: VideoPlayerProps) {
         {errorMessage && (
           <div
             role="alert"
-            className="absolute inset-0 flex flex-col items-center justify-center gap-4 bg-black/85 p-6 text-center"
+            className="absolute inset-0 flex flex-col items-center justify-center gap-4 bg-black/85 p-6 text-center backdrop-blur-sm"
           >
-            <span className="flex h-12 w-12 items-center justify-center rounded-full bg-red-500/15">
+            <span className="flex h-12 w-12 items-center justify-center rounded-full border border-red-300/20 bg-red-500/15">
               <AlertTriangle className="h-6 w-6 text-red-300" />
             </span>
             <div>
@@ -178,7 +269,7 @@ export function VideoPlayer({ src, title, onPlay }: VideoPlayerProps) {
             <button
               type="button"
               onClick={retry}
-              className="flex items-center gap-2 rounded-lg bg-neon-500 px-4 py-2 text-sm font-medium text-white transition-colors hover:bg-neon-400"
+              className="flex min-h-11 items-center gap-2 rounded-xl bg-neon-500 px-5 text-sm font-semibold text-white shadow-[0_0_24px_-8px_rgba(176,38,255,.9)] transition hover:bg-neon-400 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-neon-300"
             >
               <RotateCw className="h-4 w-4" />
               {t('player.retry')}
@@ -191,9 +282,9 @@ export function VideoPlayer({ src, title, onPlay }: VideoPlayerProps) {
             type="button"
             onClick={togglePlayback}
             aria-label={t('player.playTitle', { title })}
-            className="absolute inset-0 flex items-center justify-center bg-black/20 transition-colors hover:bg-black/30"
+            className="absolute inset-0 flex items-center justify-center bg-gradient-to-t from-black/25 via-transparent to-black/10 transition-colors hover:from-black/35"
           >
-            <span className="flex h-16 w-16 items-center justify-center rounded-full bg-neon-500/90 shadow-[0_0_32px_-4px_rgba(176,38,255,1)] transition-transform duration-200 hover:scale-110">
+            <span className="flex h-16 w-16 items-center justify-center rounded-full border border-white/20 bg-neon-500/90 shadow-[0_0_36px_-4px_rgba(176,38,255,1)] transition-transform duration-200 hover:scale-110 motion-reduce:transition-none">
               <Play className="h-7 w-7 translate-x-0.5 fill-white text-white" />
             </span>
           </button>
@@ -202,9 +293,8 @@ export function VideoPlayer({ src, title, onPlay }: VideoPlayerProps) {
 
       {!hasError && (
         <PlayerControls
+          videoElement={videoElement}
           isPlaying={isPlaying}
-          currentTime={currentTime}
-          duration={duration}
           volume={volume}
           isMuted={isMuted}
           isFullscreen={isFullscreen}
