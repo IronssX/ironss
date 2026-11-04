@@ -28,7 +28,7 @@ interface HomeFeedPageProps {
   isLoading: boolean;
   error: string | null;
   onRetry: () => void;
-  onSelectVideo: (videoId: string) => void;
+  onSelectVideo: (videoId: string, video?: Video) => void;
   onOpenChannel: (channelId: string) => void;
   onNavigate: (page: Page, target?: { shortId?: string }) => void;
 }

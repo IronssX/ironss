@@ -20,6 +20,12 @@ interface ProfileRow {
   cover_theme: CoverTheme;
 }
 
+export interface PublicProfileSearchResult {
+  id: string;
+  username: string;
+  avatarUrl: string | null;
+}
+
 function isProfileRow(value: unknown): value is ProfileRow {
   if (!value || typeof value !== 'object') return false;
   const row = value as Record<string, unknown>;
@@ -55,6 +61,49 @@ export async function fetchProfile(userId: string): Promise<Profile | null> {
     coverImagePath: data.cover_image_path,
     coverTheme: data.cover_theme,
   };
+}
+
+export async function searchPublicProfiles(terms: string[]): Promise<PublicProfileSearchResult[]> {
+  const searchTerms = [...new Set(terms
+    .map((term) => term
+      .normalize('NFD')
+      .replace(/\p{M}/gu, '')
+      .replace(/ı/g, 'i')
+      .replace(/[^a-z0-9_]/g, ''))
+    .filter((term) => term.length >= 3))].slice(0, 5);
+  if (searchTerms.length === 0) return [];
+
+  const client = requireSupabase();
+  const results = await Promise.all(searchTerms.map((term) =>
+    client
+      .from('profiles')
+      .select('id, username, avatar_path')
+      .ilike('username', `%${term}%`)
+      .limit(10),
+  ));
+
+  const profilesById = new Map<string, PublicProfileSearchResult>();
+  for (const { data, error } of results) {
+    if (error) throw error;
+    if (!Array.isArray(data)) throw new Error('Unexpected public profile search data.');
+    for (const row of data) {
+      if (
+        !row ||
+        typeof row.id !== 'string' ||
+        typeof row.username !== 'string' ||
+        (row.avatar_path !== null && typeof row.avatar_path !== 'string')
+      ) {
+        throw new Error('Unexpected public profile search data.');
+      }
+      profilesById.set(row.id, {
+        id: row.id,
+        username: row.username,
+        avatarUrl: row.avatar_path ? getAvatarUrl(row.avatar_path) : null,
+      });
+    }
+  }
+
+  return [...profilesById.values()].slice(0, 12);
 }
 
 export function validateAvatarFile(file: File, language: Language = 'tr'): string | null {

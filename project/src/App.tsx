@@ -19,6 +19,7 @@ import { SettingsPage } from '@/pages/SettingsPage';
 import { UploadChoicePage } from '@/pages/UploadChoicePage';
 import { NotificationsPage } from '@/pages/NotificationsPage';
 import { SubscriptionsPage } from '@/pages/SubscriptionsPage';
+import { IronssAI } from '@/components/IronssAI';
 import { LoadingSpinner } from '@/components/LoadingSpinner';
 import type { Page } from '@/types/navigation';
 import type { CategoryFilter, Video } from '@/types/video';
@@ -470,6 +471,12 @@ function App() {
           {renderPage()}
         </main>
       </div>
+      <IronssAI
+        isAvailable={page !== 'shorts' && page !== 'watch'}
+        onSelectVideo={openVideo}
+        onOpenChannel={openChannel}
+        onSignIn={() => navigate('login')}
+      />
     </div>
   );
 }

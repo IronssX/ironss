@@ -372,6 +372,55 @@ export async function fetchVideosPage(
   return fetchVideosRange(videoType, offset, offset + pageSize - 1);
 }
 
+export async function searchPublicVideos(terms: string[]): Promise<Video[]> {
+  const searchTerms = [...new Set(terms
+    .map((term) => term.replace(/[^\p{L}\p{N}]/gu, '').toLocaleLowerCase())
+    .filter((term) => term.length >= 2))].slice(0, 5);
+  if (searchTerms.length === 0) return [];
+
+  const client = requireSupabase();
+  const filter = searchTerms
+    .flatMap((term) => [
+      `title.ilike.%${term}%`,
+      `description.ilike.%${term}%`,
+      `uploader_name.ilike.%${term}%`,
+    ])
+    .join(',');
+  const current = await client
+    .from('videos')
+    .select(`${VIDEO_FIELDS}, video_type`)
+    .eq('visibility', 'public')
+    .eq('privacy_transition_pending', false)
+    .or(filter)
+    .order('created_at', { ascending: false })
+    .limit(40);
+
+  let rows = current.data;
+  if (current.error) {
+    if (isVideoPrivacyColumnMissing(current.error)) throw new VideoPrivacySchemaMissingError();
+    if (!isVideoTypeColumnMissing(current.error)) throw current.error;
+
+    const legacy = await client
+      .from('videos')
+      .select(VIDEO_FIELDS)
+      .eq('visibility', 'public')
+      .eq('privacy_transition_pending', false)
+      .or(filter)
+      .order('created_at', { ascending: false })
+      .limit(40);
+    if (legacy.error) {
+      if (isVideoPrivacyColumnMissing(legacy.error)) throw new VideoPrivacySchemaMissingError();
+      throw legacy.error;
+    }
+    rows = legacy.data.map((row) => ({ ...row, video_type: 'standard' as const }));
+  }
+
+  if (!Array.isArray(rows)) throw new Error('Unexpected video search data.');
+  if (!rows.every(isVideoRow)) throw new Error('Unexpected video search data.');
+  const publicRows = rows.filter((row) => row.visibility === 'public' && !row.privacy_transition_pending);
+  return mapVideoRows(publicRows);
+}
+
 export async function fetchVideosByOwner(ownerId: string): Promise<Video[]> {
   const videos: VideoRow[] = [];
   const pageSize = 500;
