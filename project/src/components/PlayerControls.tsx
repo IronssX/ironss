@@ -34,6 +34,7 @@ export const PlayerControls = memo(function PlayerControls({
   const { t } = useLanguage();
   const [currentTime, setCurrentTime] = useState(0);
   const [duration, setDuration] = useState(0);
+  const [seekStart, setSeekStart] = useState(0);
   const isSilent = isMuted || volume === 0;
   const VolumeIcon = isSilent ? VolumeX : Volume2;
 
@@ -41,6 +42,7 @@ export const PlayerControls = memo(function PlayerControls({
     if (!videoElement) {
       setCurrentTime(0);
       setDuration(0);
+      setSeekStart(0);
       return;
     }
 
@@ -51,17 +53,30 @@ export const PlayerControls = memo(function PlayerControls({
       lastTimeUpdate = now;
       setCurrentTime(videoElement.currentTime);
     };
-    const handleTimeUpdate = () => updateTime();
     const updateDuration = () => {
       const nextDuration = videoElement.duration;
-      setDuration(Number.isFinite(nextDuration) ? nextDuration : 0);
+      if (Number.isFinite(nextDuration)) {
+        setSeekStart(0);
+        setDuration(Math.max(nextDuration, 0));
+      } else if (Number.isNaN(nextDuration) || videoElement.seekable.length === 0) {
+        setSeekStart(0);
+        setDuration(0);
+      } else {
+        setSeekStart(videoElement.seekable.start(0));
+        setDuration(videoElement.seekable.end(videoElement.seekable.length - 1));
+      }
       updateTime();
+    };
+    const handleTimeUpdate = () => {
+      if (!Number.isFinite(videoElement.duration)) updateDuration();
+      else updateTime();
     };
 
     updateDuration();
     videoElement.addEventListener('timeupdate', handleTimeUpdate);
     videoElement.addEventListener('durationchange', updateDuration);
     videoElement.addEventListener('loadedmetadata', updateDuration);
+    videoElement.addEventListener('progress', updateDuration);
     const updateTimeImmediately = () => updateTime(true);
     videoElement.addEventListener('seeking', updateTimeImmediately);
     videoElement.addEventListener('seeked', updateTimeImmediately);
@@ -69,6 +84,7 @@ export const PlayerControls = memo(function PlayerControls({
       videoElement.removeEventListener('timeupdate', handleTimeUpdate);
       videoElement.removeEventListener('durationchange', updateDuration);
       videoElement.removeEventListener('loadedmetadata', updateDuration);
+      videoElement.removeEventListener('progress', updateDuration);
       videoElement.removeEventListener('seeking', updateTimeImmediately);
       videoElement.removeEventListener('seeked', updateTimeImmediately);
     };
@@ -94,17 +110,17 @@ export const PlayerControls = memo(function PlayerControls({
 
       <input
         type="range"
-        min={0}
+        min={seekStart}
         max={duration || 0}
         step={0.1}
-        value={Math.min(currentTime, duration || 0)}
+        value={Math.min(Math.max(currentTime, seekStart), duration || 0)}
         onChange={(event: ChangeEvent<HTMLInputElement>) => onSeek(Number(event.target.value))}
         aria-label={t('player.seek')}
         aria-valuetext={t('player.seekValue', {
           current: formatPlaybackTime(currentTime),
           duration: formatPlaybackTime(duration),
         })}
-        disabled={!duration}
+        disabled={duration <= seekStart}
         className="order-last h-1.5 min-w-0 basis-full cursor-pointer accent-neon-500 disabled:cursor-not-allowed sm:order-none sm:flex-1"
       />
 

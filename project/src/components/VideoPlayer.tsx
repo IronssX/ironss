@@ -17,6 +17,20 @@ interface VideoPlayerProps {
 
 type FullscreenVideo = HTMLVideoElement & { webkitEnterFullscreen?: () => void };
 
+function getSeekBounds(videoElement: HTMLVideoElement) {
+  if (Number.isFinite(videoElement.duration)) {
+    return videoElement.duration > 0 ? { start: 0, end: videoElement.duration } : null;
+  }
+  if (Number.isNaN(videoElement.duration)) return null;
+  if (videoElement.seekable.length > 0) {
+    return {
+      start: videoElement.seekable.start(0),
+      end: videoElement.seekable.end(videoElement.seekable.length - 1),
+    };
+  }
+  return { start: 0, end: Number.POSITIVE_INFINITY };
+}
+
 const canFullscreen =
   typeof document !== 'undefined' &&
   (document.fullscreenEnabled || (typeof HTMLVideoElement !== 'undefined' && 'webkitEnterFullscreen' in HTMLVideoElement.prototype));
@@ -76,8 +90,10 @@ export function VideoPlayer({ src, mimeType, title, onPlay, onRefreshSource }: V
   }, [hasError, videoElement]);
 
   const seek = useCallback((time: number) => {
-    if (!videoElement || !Number.isFinite(videoElement.duration)) return;
-    const nextTime = Math.min(Math.max(time, 0), videoElement.duration);
+    if (!videoElement) return;
+    const bounds = getSeekBounds(videoElement);
+    if (!bounds || bounds.end <= bounds.start) return;
+    const nextTime = Math.min(Math.max(time, bounds.start), bounds.end);
     videoElement.currentTime = nextTime;
   }, [videoElement]);
 
@@ -149,8 +165,29 @@ export function VideoPlayer({ src, mimeType, title, onPlay, onRefreshSource }: V
     videoElement.load();
   };
 
-  const handleKeyDown = (event: KeyboardEvent<HTMLVideoElement>) => {
-    if (event.altKey || event.ctrlKey || event.metaKey || event.target !== videoElement) return;
+  const restorePendingSeek = (element: HTMLVideoElement) => {
+    if (pendingSeekRef.current === null) return;
+    const bounds = getSeekBounds(element);
+    if (!bounds || bounds.end <= bounds.start) return;
+    element.currentTime = Math.min(Math.max(pendingSeekRef.current, bounds.start), bounds.end);
+    pendingSeekRef.current = null;
+    if (shouldResumeRef.current) {
+      shouldResumeRef.current = false;
+      element.play().catch(() => undefined);
+    }
+  };
+
+  const handleKeyDown = (event: KeyboardEvent<HTMLDivElement>) => {
+    const target = event.target;
+    if (
+      event.altKey ||
+      event.ctrlKey ||
+      event.metaKey ||
+      (target instanceof HTMLElement &&
+        (target.isContentEditable || ['INPUT', 'TEXTAREA', 'SELECT'].includes(target.tagName)))
+    ) {
+      return;
+    }
     switch (event.key.toLowerCase()) {
       case ' ':
       case 'k':
@@ -204,6 +241,7 @@ export function VideoPlayer({ src, mimeType, title, onPlay, onRefreshSource }: V
   return (
     <div
       ref={playerRef}
+      onKeyDown={handleKeyDown}
       className={`group overflow-hidden bg-black shadow-[0_24px_80px_-32px_rgba(114,58,150,.7)] ${
         isFullscreen ? 'flex h-full w-full flex-col' : 'rounded-2xl border border-white/10'
       }`}
@@ -216,7 +254,6 @@ export function VideoPlayer({ src, mimeType, title, onPlay, onRefreshSource }: V
           tabIndex={0}
           aria-label={t('player.label', { title })}
           className="h-full w-full bg-black object-contain focus-visible:outline focus-visible:outline-2 focus-visible:outline-inset focus-visible:outline-neon-300"
-          onKeyDown={handleKeyDown}
           onClick={togglePlayback}
           onPlay={() => {
             setIsPlaying(true);
@@ -226,18 +263,14 @@ export function VideoPlayer({ src, mimeType, title, onPlay, onRefreshSource }: V
           onEnded={() => setIsPlaying(false)}
           onLoadStart={() => setIsLoading(true)}
           onPlaying={() => setIsLoading(false)}
-          onCanPlay={() => setIsLoading(false)}
+          onCanPlay={(event) => {
+            setIsLoading(false);
+            restorePendingSeek(event.currentTarget);
+          }}
+          onProgress={(event) => restorePendingSeek(event.currentTarget)}
           onLoadedMetadata={(event) => {
             setIsLoading(false);
-            if (pendingSeekRef.current !== null) {
-              const time = Math.min(pendingSeekRef.current, Number.isFinite(event.currentTarget.duration) ? event.currentTarget.duration : 0);
-              event.currentTarget.currentTime = time;
-              pendingSeekRef.current = null;
-              if (shouldResumeRef.current) {
-                shouldResumeRef.current = false;
-                event.currentTarget.play().catch(() => undefined);
-              }
-            }
+            restorePendingSeek(event.currentTarget);
           }}
           onSeeking={() => setIsLoading(true)}
           onSeeked={() => setIsLoading(false)}

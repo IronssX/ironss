@@ -456,8 +456,7 @@ function App() {
 
         <main className="min-w-0 flex-1 px-4 pb-8 pt-6 sm:px-6 sm:pt-8 md:ml-[248px] lg:px-9">
           {cleanupRetryFailed && (
-            <div role="alert" className="mb-6 flex flex-col gap-3 rounded-xl border border-amber-400/30 bg-amber-400/[0.07] px-4 py-3 text-sm text-amber-100 sm:flex-row sm:items-center sm:justify-between">
-              <p>{t('videoManage.ownerCleanupPending')}</p>
+            <div className="mb-6 flex flex-col gap-3 rounded-xl border border-amber-400/30 bg-amber-400/[0.07] px-4 py-3 text-sm text-amber-100 sm:flex-row sm:items-center sm:justify-between">
               <button type="button" disabled={cleanupRetryBusy} onClick={() => void retryPendingVideoCleanup()} className="shrink-0 font-semibold underline underline-offset-2 disabled:opacity-60">
                 {t(cleanupRetryBusy ? 'videoManage.retryingCleanup' : 'videoManage.retryCleanup')}
               </button>
