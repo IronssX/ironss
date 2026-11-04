@@ -6,6 +6,7 @@ import {
   markAllNotificationsRead,
   markNotificationRead,
   type ActivityNotification,
+  NOTIFICATION_PAGE_SIZE,
 } from '@/services/notificationService';
 import { requireSupabase } from '@/lib/supabase';
 import { logSupabaseFailure } from '@/utils/supabaseDiagnostics';
@@ -18,12 +19,15 @@ function mergeNotifications(
   for (const notification of incoming) byId.set(notification.id, notification);
   return [...byId.values()].sort((first, second) =>
     new Date(second.createdAt).getTime() - new Date(first.createdAt).getTime(),
-  ).slice(0, 100);
+  );
 }
 
 export function useNotifications(userId: string | null) {
   const [notifications, setNotifications] = useState<ActivityNotification[]>([]);
   const [unreadCount, setUnreadCount] = useState(0);
+  const [hasMore, setHasMore] = useState(false);
+  const [isLoadingMore, setIsLoadingMore] = useState(false);
+  const [loadedCount, setLoadedCount] = useState(0);
   const [isLoading, setIsLoading] = useState(Boolean(userId));
   const [error, setError] = useState<unknown>(null);
   const [actionError, setActionError] = useState<unknown>(null);
@@ -32,6 +36,9 @@ export function useNotifications(userId: string | null) {
     if (!userId) {
       setNotifications([]);
       setUnreadCount(0);
+      setHasMore(false);
+      setLoadedCount(0);
+      setIsLoadingMore(false);
       setIsLoading(false);
       setError(null);
       setActionError(null);
@@ -48,6 +55,8 @@ export function useNotifications(userId: string | null) {
       ]);
       setNotifications((current) => mergeNotifications(current, fetched));
       setUnreadCount(exactUnreadCount);
+      setHasMore(fetched.length === NOTIFICATION_PAGE_SIZE);
+      setLoadedCount((current) => Math.max(current, fetched.length));
     } catch (fetchError) {
       setError(fetchError);
       logSupabaseFailure('notifications', 'fetch', fetchError);
@@ -71,6 +80,9 @@ export function useNotifications(userId: string | null) {
     let channel: RealtimeChannel | null = null;
     setNotifications([]);
     setUnreadCount(0);
+    setHasMore(false);
+    setLoadedCount(0);
+    setIsLoadingMore(false);
     setError(null);
     setActionError(null);
     setIsLoading(Boolean(userId));
@@ -97,6 +109,8 @@ export function useNotifications(userId: string | null) {
                 if (!active) return;
                 setNotifications((current) => mergeNotifications(current, items));
                 setUnreadCount(exactUnreadCount);
+                setHasMore(items.length === NOTIFICATION_PAGE_SIZE);
+                setLoadedCount(items.length);
               })
               .catch((fetchError: unknown) => {
                 if (!active) return;
@@ -168,6 +182,25 @@ export function useNotifications(userId: string | null) {
     };
   }, [userId]);
 
+  const loadMore = useCallback(async (): Promise<boolean> => {
+    if (!userId || !hasMore || isLoadingMore) return false;
+    setIsLoadingMore(true);
+    try {
+      const nextPage = await fetchNotifications(userId, undefined, loadedCount);
+      setNotifications((current) => mergeNotifications(current, nextPage));
+      setLoadedCount((current) => current + nextPage.length);
+      setHasMore(nextPage.length === NOTIFICATION_PAGE_SIZE);
+      setError(null);
+      return true;
+    } catch (fetchError) {
+      setError(fetchError);
+      logSupabaseFailure('notifications', 'loadMore', fetchError);
+      return false;
+    } finally {
+      setIsLoadingMore(false);
+    }
+  }, [hasMore, isLoadingMore, loadedCount, userId]);
+
   const markRead = useCallback(async (notificationId: string): Promise<boolean> => {
     if (!userId) return false;
     const wasUnread = notifications.some((notification) => notification.id === notificationId && !notification.readAt);
@@ -205,5 +238,17 @@ export function useNotifications(userId: string | null) {
     }
   }, [userId]);
 
-  return { notifications, unreadCount, isLoading, error, actionError, refresh, markRead, markAllRead };
+  return {
+    notifications,
+    unreadCount,
+    isLoading,
+    isLoadingMore,
+    hasMore,
+    error,
+    actionError,
+    refresh,
+    loadMore,
+    markRead,
+    markAllRead,
+  };
 }

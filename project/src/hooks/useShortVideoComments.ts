@@ -53,12 +53,12 @@ export function useShortVideoComments(videoId: string) {
     };
   }, [videoId]);
 
-  const addComment = async (body: string): Promise<boolean> => {
+  const addComment = async (body: string, parentCommentId?: string): Promise<boolean> => {
     if (!user || isBusy) return false;
     setIsBusy(true);
     setHasError(false);
     try {
-      await addShortVideoComment(videoId, user.id, body);
+      await addShortVideoComment(videoId, user.id, body, parentCommentId);
       await refresh();
       return true;
     } catch (error) {
@@ -76,8 +76,7 @@ export function useShortVideoComments(videoId: string) {
     setHasError(false);
     try {
       await deleteShortVideoComment(commentId, user.id);
-      setComments((current) => current.filter((comment) => comment.id !== commentId));
-      setCommentCount((current) => Math.max(0, current - 1));
+      await refresh();
       return true;
     } catch (error) {
       logSupabaseFailure('short-video-comments', 'deleteComment', error);

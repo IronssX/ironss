@@ -7,6 +7,7 @@ export interface ShortVideoComment {
   id: string;
   videoId: string;
   userId: string;
+  parentCommentId: string | null;
   username: string;
   avatarUrl: string | null;
   body: string;
@@ -17,6 +18,7 @@ interface ShortCommentRow {
   id: string;
   video_id: string;
   user_id: string;
+  parent_comment_id?: string | null;
   body: string;
   created_at: string;
 }
@@ -34,9 +36,18 @@ function isShortCommentRow(value: unknown): value is ShortCommentRow {
     typeof row.id === 'string' &&
     typeof row.video_id === 'string' &&
     typeof row.user_id === 'string' &&
+    (row.parent_comment_id === undefined || row.parent_comment_id === null || typeof row.parent_comment_id === 'string') &&
     typeof row.body === 'string' &&
     typeof row.created_at === 'string'
   );
+}
+
+function isParentCommentColumnMissing(error: unknown): boolean {
+  if (!error || typeof error !== 'object') return false;
+  const candidate = error as { code?: unknown; message?: unknown };
+  return candidate.code === '42703' &&
+    typeof candidate.message === 'string' &&
+    candidate.message.includes('parent_comment_id');
 }
 
 function isShortCommentProfile(value: unknown): value is ShortCommentProfile {
@@ -108,20 +119,30 @@ export async function setShortVideoLiked(
 export async function fetchShortVideoComments(
   videoId: string,
 ): Promise<{ comments: ShortVideoComment[]; totalCount: number }> {
-  const { data, error, count } = await requireSupabase()
+  const client = requireSupabase();
+  const { data, error, count } = await client
     .from('short_video_comments')
-    .select('id, video_id, user_id, body, created_at', { count: 'exact' })
+    .select('id, video_id, user_id, parent_comment_id, body, created_at', { count: 'exact' })
     .eq('video_id', videoId)
     .order('created_at', { ascending: false })
     .limit(100);
 
-  if (error) throw error;
-  if (!Array.isArray(data) || !data.every(isShortCommentRow)) {
+  if (error && !isParentCommentColumnMissing(error)) throw error;
+  const result = error
+    ? await client
+        .from('short_video_comments')
+        .select('id, video_id, user_id, body, created_at', { count: 'exact' })
+        .eq('video_id', videoId)
+        .order('created_at', { ascending: false })
+        .limit(100)
+    : { data, error: null, count };
+  if (result.error) throw result.error;
+  if (!Array.isArray(result.data) || !result.data.every(isShortCommentRow)) {
     throw new Error('Unexpected Shorts comment data.');
   }
-  if (data.length === 0) return { comments: [], totalCount: count ?? 0 };
+  if (result.data.length === 0) return { comments: [], totalCount: result.count ?? 0 };
 
-  const userIds = [...new Set(data.map((comment) => comment.user_id))];
+  const userIds = [...new Set(result.data.map((comment) => comment.user_id))];
   const { data: profiles, error: profileError } = await requireSupabase()
     .from('profiles')
     .select('id, username, avatar_path')
@@ -132,26 +153,28 @@ export async function fetchShortVideoComments(
   }
 
   const profileById = new Map(profiles.map((profile) => [profile.id, profile]));
-  const comments = data.map((comment) => {
+  const comments = result.data.map((comment) => {
     const profile = profileById.get(comment.user_id);
     if (!profile) throw new Error('A Shorts commenter profile could not be found.');
     return {
       id: comment.id,
       videoId: comment.video_id,
       userId: comment.user_id,
+      parentCommentId: 'parent_comment_id' in comment ? comment.parent_comment_id ?? null : null,
       username: profile.username,
       avatarUrl: profile.avatar_path ? getAvatarUrl(profile.avatar_path) : null,
       body: comment.body,
       createdAt: comment.created_at,
     };
   });
-  return { comments, totalCount: count ?? comments.length };
+  return { comments, totalCount: result.count ?? comments.length };
 }
 
 export async function addShortVideoComment(
   videoId: string,
   userId: string,
   body: string,
+  parentCommentId?: string | null,
 ): Promise<void> {
   const trimmedBody = body.trim();
   if (!trimmedBody || trimmedBody.length > MAX_SHORT_COMMENT_LENGTH) {
@@ -160,7 +183,12 @@ export async function addShortVideoComment(
 
   const { error } = await requireSupabase()
     .from('short_video_comments')
-    .insert({ video_id: videoId, user_id: userId, body: trimmedBody });
+    .insert({
+      video_id: videoId,
+      user_id: userId,
+      body: trimmedBody,
+      ...(parentCommentId ? { parent_comment_id: parentCommentId } : {}),
+    });
   if (error) throw error;
 }
 

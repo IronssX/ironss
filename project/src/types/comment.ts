@@ -8,4 +8,5 @@ export interface VideoComment {
   createdAt: string;
   userId?: string;
   avatarUrl?: string | null;
+  parentCommentId?: string | null;
 }

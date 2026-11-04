@@ -1,7 +1,9 @@
 import { requireSupabase } from '@/lib/supabase';
 import { getAvatarUrl } from '@/services/profileService';
 
-export type NotificationType = 'channel_connected' | 'new_video' | 'new_comment';
+export type NotificationType = 'channel_connected' | 'new_video' | 'new_comment' | 'new_like' | 'comment_reply';
+
+export const NOTIFICATION_PAGE_SIZE = 50;
 
 export interface ActivityNotification {
   id: string;
@@ -45,7 +47,11 @@ function isNotificationRow(value: unknown): value is NotificationRow {
     typeof row.id === 'string' &&
     typeof row.recipient_id === 'string' &&
     (row.actor_id === null || typeof row.actor_id === 'string') &&
-    (row.type === 'channel_connected' || row.type === 'new_video' || row.type === 'new_comment') &&
+    (row.type === 'channel_connected' ||
+      row.type === 'new_video' ||
+      row.type === 'new_comment' ||
+      row.type === 'new_like' ||
+      row.type === 'comment_reply') &&
     (row.video_id === null || typeof row.video_id === 'string') &&
     (row.channel_id === null || typeof row.channel_id === 'string') &&
     typeof row.created_at === 'string' &&
@@ -77,6 +83,7 @@ function hasId(value: unknown): value is { id: string } {
 export async function fetchNotifications(
   recipientId: string,
   notificationId?: string,
+  offset = 0,
 ): Promise<ActivityNotification[]> {
   let query = requireSupabase()
     .from('notifications')
@@ -84,8 +91,8 @@ export async function fetchNotifications(
     .eq('recipient_id', recipientId)
     .order('created_at', { ascending: false });
 
-  if (notificationId) query = query.eq('id', notificationId);
-  else query = query.limit(100);
+  if (notificationId) query = query.eq('id', notificationId).limit(1);
+  else query = query.range(offset, offset + NOTIFICATION_PAGE_SIZE - 1);
 
   const { data, error } = await query;
   if (error) throw error;

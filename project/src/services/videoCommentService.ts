@@ -6,6 +6,7 @@ interface VideoCommentRow {
   id: string;
   video_id: string;
   user_id: string;
+  parent_comment_id?: string | null;
   body: string;
   created_at: string;
 }
@@ -23,9 +24,18 @@ function isVideoCommentRow(value: unknown): value is VideoCommentRow {
     typeof row.id === 'string' &&
     typeof row.video_id === 'string' &&
     typeof row.user_id === 'string' &&
+    (row.parent_comment_id === undefined || row.parent_comment_id === null || typeof row.parent_comment_id === 'string') &&
     typeof row.body === 'string' &&
     typeof row.created_at === 'string'
   );
+}
+
+function isParentCommentColumnMissing(error: unknown): boolean {
+  if (!error || typeof error !== 'object') return false;
+  const candidate = error as { code?: unknown; message?: unknown };
+  return candidate.code === '42703' &&
+    typeof candidate.message === 'string' &&
+    candidate.message.includes('parent_comment_id');
 }
 
 function isCommentProfileRow(value: unknown): value is CommentProfileRow {
@@ -57,6 +67,7 @@ async function mapCommentRows(rows: VideoCommentRow[]): Promise<VideoComment[]> 
     return {
       id: row.id,
       userId: row.user_id,
+      parentCommentId: row.parent_comment_id,
       author: profile.username,
       avatarUrl: profile.avatar_path ? getAvatarUrl(profile.avatar_path) : null,
       body: row.body,
@@ -66,18 +77,28 @@ async function mapCommentRows(rows: VideoCommentRow[]): Promise<VideoComment[]> 
 }
 
 export async function fetchVideoComments(videoId: string): Promise<VideoComment[]> {
-  const { data, error } = await requireSupabase()
+  const client = requireSupabase();
+  const { data, error } = await client
     .from('video_comments')
-    .select('id, video_id, user_id, body, created_at')
+    .select('id, video_id, user_id, parent_comment_id, body, created_at')
     .eq('video_id', videoId)
     .order('created_at', { ascending: false })
     .limit(100);
 
-  if (error) throw error;
-  if (!Array.isArray(data) || !data.every(isVideoCommentRow)) {
+  if (error && !isParentCommentColumnMissing(error)) throw error;
+  const result = error
+    ? await client
+        .from('video_comments')
+        .select('id, video_id, user_id, body, created_at')
+        .eq('video_id', videoId)
+        .order('created_at', { ascending: false })
+        .limit(100)
+    : { data, error: null };
+  if (result.error) throw result.error;
+  if (!Array.isArray(result.data) || !result.data.every(isVideoCommentRow)) {
     throw new Error('Unexpected video comment data.');
   }
-  return mapCommentRows(data);
+  return mapCommentRows(result.data);
 }
 
 export async function addVideoComment(
@@ -86,13 +107,21 @@ export async function addVideoComment(
   body: string,
   author: string,
   avatarUrl: string | null,
+  parentCommentId?: string | null,
 ): Promise<VideoComment> {
   const trimmedBody = body.trim();
   if (!trimmedBody || trimmedBody.length > 500) throw new Error('Invalid video comment length.');
 
-  const { data, error } = await requireSupabase()
+  const client = requireSupabase();
+  const values = {
+    video_id: videoId,
+    user_id: userId,
+    body: trimmedBody,
+    ...(parentCommentId ? { parent_comment_id: parentCommentId } : {}),
+  };
+  const { data, error } = await client
     .from('video_comments')
-    .insert({ video_id: videoId, user_id: userId, body: trimmedBody })
+    .insert(values)
     .select('id, video_id, user_id, body, created_at')
     .single();
   if (error) throw error;
@@ -100,6 +129,7 @@ export async function addVideoComment(
   return {
     id: data.id,
     userId: data.user_id,
+    parentCommentId: parentCommentId ?? null,
     author,
     avatarUrl,
     body: data.body,

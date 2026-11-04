@@ -38,12 +38,12 @@ export function useVideoComments(videoId: string) {
     };
   }, [videoId]);
 
-  const addComment = async (body: string, author: string): Promise<boolean> => {
+  const addComment = async (body: string, author: string, parentCommentId?: string): Promise<boolean> => {
     setSaveFailed(false);
     setHasError(false);
     if (user) {
       try {
-        const comment = await addRemoteVideoComment(videoId, user.id, body, author, avatarUrl);
+        const comment = await addRemoteVideoComment(videoId, user.id, body, author, avatarUrl, parentCommentId);
         setRemoteComments((current) => [comment, ...current]);
         return true;
       } catch (error) {

@@ -1,4 +1,4 @@
-import { MessageSquare, Send, Trash2 } from 'lucide-react';
+import { MessageSquare, Reply, Send, Trash2, X } from 'lucide-react';
 import { useState, type FormEvent } from 'react';
 import { UserAvatar } from '@/components/UserAvatar';
 import { useAuth } from '@/hooks/useAuth';
@@ -15,7 +15,7 @@ interface ShortVideoCommentsSectionProps {
   isLoading: boolean;
   isBusy: boolean;
   hasError: boolean;
-  addComment: (body: string) => Promise<boolean>;
+  addComment: (body: string, parentCommentId?: string) => Promise<boolean>;
   removeComment: (commentId: string) => Promise<boolean>;
 }
 
@@ -32,12 +32,16 @@ export function ShortVideoCommentsSection({
   const { language, t } = useLanguage();
   const { user, profile, avatarUrl } = useAuth();
   const [draft, setDraft] = useState('');
+  const [replyTarget, setReplyTarget] = useState<{ id: string; username: string } | null>(null);
   const trimmedDraft = draft.trim();
 
   const handleSubmit = async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
     if (!trimmedDraft || trimmedDraft.length > MAX_COMMENT_LENGTH) return;
-    if (await addComment(trimmedDraft)) setDraft('');
+    if (await addComment(trimmedDraft, replyTarget?.id)) {
+      setDraft('');
+      setReplyTarget(null);
+    }
   };
 
   return (
@@ -57,6 +61,14 @@ export function ShortVideoCommentsSection({
             className="h-8 w-8 text-xs"
           />
           <div className="flex min-w-0 flex-1 flex-col gap-2">
+            {replyTarget && (
+              <div className="flex items-center justify-between gap-2 rounded-lg border border-violet-300/10 bg-violet-300/[0.05] px-3 py-2 text-xs text-violet-100">
+                <span>{t('comments.replyingTo', { name: replyTarget.username })}</span>
+                <button type="button" onClick={() => setReplyTarget(null)} aria-label={t('comments.cancelReply')} className="text-gray-400 hover:text-white">
+                  <X className="h-4 w-4" />
+                </button>
+              </div>
+            )}
             <label htmlFor="short-comment-input" className="sr-only">
               {t('comments.write')}
             </label>
@@ -106,7 +118,7 @@ export function ShortVideoCommentsSection({
       ) : comments.length > 0 ? (
         <ul className="flex max-h-[34dvh] flex-col gap-4 overflow-y-auto pr-1 sm:max-h-[calc(100dvh-20rem)]">
           {comments.map((comment) => (
-            <li key={comment.id} className="flex gap-2.5">
+            <li key={comment.id} className={`flex gap-2.5 ${comment.parentCommentId ? 'ml-5 border-l border-violet-300/20 pl-2.5' : ''}`}>
               <UserAvatar name={comment.username} imageUrl={comment.avatarUrl} className="h-8 w-8 text-xs" />
               <div className="min-w-0 flex-1">
                 <div className="flex items-start justify-between gap-2">
@@ -131,6 +143,15 @@ export function ShortVideoCommentsSection({
                 <p className="mt-1 whitespace-pre-wrap break-words text-xs leading-relaxed text-gray-300">
                   {comment.body}
                 </p>
+                {user && (
+                  <button
+                    type="button"
+                    onClick={() => setReplyTarget({ id: comment.id, username: comment.username })}
+                    className="mt-2 inline-flex items-center gap-1 text-[10px] font-medium text-violet-300 transition hover:text-violet-100"
+                  >
+                    <Reply className="h-3 w-3" /> {t('comments.reply')}
+                  </button>
+                )}
               </div>
             </li>
           ))}

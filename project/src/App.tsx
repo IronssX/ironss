@@ -345,10 +345,13 @@ function App() {
             notifications={notificationState.notifications}
             unreadCount={notificationState.unreadCount}
             isLoading={notificationState.isLoading}
+            isLoadingMore={notificationState.isLoadingMore}
+            hasMore={notificationState.hasMore}
             error={notificationState.error}
             actionError={notificationState.actionError}
             isSignedIn={Boolean(user)}
             onRefresh={() => void notificationState.refresh()}
+            onLoadMore={() => void notificationState.loadMore()}
             onMarkRead={notificationState.markRead}
             onMarkAllRead={notificationState.markAllRead}
             onOpenVideo={openVideo}

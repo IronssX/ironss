@@ -1,4 +1,4 @@
-import { MessageSquare, Send } from 'lucide-react';
+import { MessageSquare, Reply, Send, X } from 'lucide-react';
 import { useState } from 'react';
 import type { FormEvent } from 'react';
 import { useAuth } from '@/hooks/useAuth';
@@ -7,6 +7,7 @@ import { MAX_COMMENT_LENGTH } from '@/types/comment';
 import { formatExactCount, formatTimeAgo } from '@/utils/format';
 import { useLanguage } from '@/hooks/useLanguage';
 import { UserAvatar } from '@/components/UserAvatar';
+import type { VideoComment } from '@/types/comment';
 
 interface CommentsSectionProps {
   videoId: string;
@@ -18,13 +19,17 @@ export function CommentsSection({ videoId }: CommentsSectionProps) {
   const { comments, addComment, saveFailed, hasError, isSignedIn } = useVideoComments(videoId);
   const authorName = profile?.username ?? t('profile.guest');
   const [draft, setDraft] = useState('');
+  const [replyTarget, setReplyTarget] = useState<VideoComment | null>(null);
   const trimmedDraft = draft.trim();
   const canSubmit = trimmedDraft.length > 0;
 
   const handleSubmit = async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
     if (!canSubmit) return;
-    if (await addComment(trimmedDraft, authorName)) setDraft('');
+    if (await addComment(trimmedDraft, authorName, replyTarget?.id)) {
+      setDraft('');
+      setReplyTarget(null);
+    }
   };
 
   return (
@@ -44,6 +49,14 @@ export function CommentsSection({ videoId }: CommentsSectionProps) {
       <form onSubmit={handleSubmit} className="flex items-start gap-3">
         <UserAvatar name={authorName} imageUrl={avatarUrl} className="h-10 w-10" />
         <div className="flex min-w-0 flex-1 flex-col gap-2">
+          {replyTarget && (
+            <div className="flex items-center justify-between gap-2 rounded-lg border border-violet-300/10 bg-violet-300/[0.05] px-3 py-2 text-xs text-violet-100">
+              <span>{t('comments.replyingTo', { name: replyTarget.author })}</span>
+              <button type="button" onClick={() => setReplyTarget(null)} aria-label={t('comments.cancelReply')} className="text-gray-400 hover:text-white">
+                <X className="h-4 w-4" />
+              </button>
+            </div>
+          )}
           <label htmlFor="comment-input" className="sr-only">
             {t('comments.write')}
           </label>
@@ -89,7 +102,7 @@ export function CommentsSection({ videoId }: CommentsSectionProps) {
       {comments.length > 0 ? (
         <ul className="flex flex-col gap-4">
           {comments.map((comment) => (
-            <li key={comment.id} className="flex animate-fade-in gap-3 rounded-xl border border-white/[0.045] bg-white/[0.015] p-3 sm:p-4">
+            <li key={comment.id} className={`flex animate-fade-in gap-3 rounded-xl border border-white/[0.045] bg-white/[0.015] p-3 sm:p-4 ${comment.parentCommentId ? 'ml-6 border-l-violet-300/20 pl-3 sm:ml-10' : ''}`}>
               <UserAvatar name={comment.author} imageUrl={comment.avatarUrl ?? null} className="h-10 w-10" />
               <div className="min-w-0 flex-1">
                 <p className="flex flex-wrap items-baseline gap-x-2 text-sm">
@@ -101,6 +114,15 @@ export function CommentsSection({ videoId }: CommentsSectionProps) {
                 <p className="mt-1 whitespace-pre-wrap break-words text-sm leading-relaxed text-gray-300">
                   {comment.body}
                 </p>
+                {isSignedIn && comment.userId && (
+                  <button
+                    type="button"
+                    onClick={() => setReplyTarget(comment)}
+                    className="mt-2 inline-flex items-center gap-1 text-xs font-medium text-violet-300 transition hover:text-violet-100"
+                  >
+                    <Reply className="h-3.5 w-3.5" /> {t('comments.reply')}
+                  </button>
+                )}
               </div>
             </li>
           ))}
